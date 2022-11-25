@@ -3,11 +3,11 @@ import { ChatInputCommandInteraction, SlashCommandBuilder, User, Role, TextChann
 
 export default class Pass extends BotInteraction {
     get name() {
-        return 'assign';
+        return 'assign-matchmaking';
     }
 
     get description() {
-        return 'Assigns a role to a user';
+        return 'Assigns a Matchmaking role to a user';
     }
 
     get permissions() {
@@ -15,9 +15,21 @@ export default class Pass extends BotInteraction {
     }
 
     get slashData() {
+        const assignOptions: any = {
+            'Verified Learner': 'verifiedLearner',
+            'NoRealm': 'noRealm',
+            'Duo RootSkips': 'duoRootskips',
+            '3-7 RootSkips': 'threeSevenRootskips',
+            'Duo Experienced': 'duoExperienced',
+            '3-7 Experienced': 'threeSevenExperienced',
+            'Duo Master': 'duoMaster',
+            '3-7 Master': 'threeSevenMaster',
+            'Duo Grandmaster': 'duoGrandmaster',
+            '3-7 Grandmaster': 'threeSevenGrandmaster'
+        }
         const RoleOptions: any = [];
-        Object.keys(this.client.util.utilities.assignOptions).forEach((key: string) => {
-            RoleOptions.push({ name: key, value: this.client.util.utilities.assignOptions[key] })
+        Object.keys(assignOptions).forEach((key: string) => {
+            RoleOptions.push({ name: key, value: assignOptions[key] })
         })
         return new SlashCommandBuilder()
             .setName(this.name)
@@ -37,7 +49,11 @@ export default class Pass extends BotInteraction {
         // const { Categories } = this.client.util.utilities.enums;
         const { roles, colours, rolePrereqisites, removeHeirarchy, channels, heirarchy } = this.client.util.utilities;
 
-        const channel = await this.client.channels.fetch(channels[categorizeChannel(role)]) as TextChannel;
+        const outputChannelId = categorizeChannel(role) ? (channels as any)[categorizeChannel(role)] : '';
+        let channel;
+        if (outputChannelId) {
+            channel = await this.client.channels.fetch(outputChannelId) as TextChannel;
+        }
 
         const user = await interaction.guild?.members.fetch(userResponse.id);
         const userRoles = user?.roles.cache.map(role => role.id) || [];
@@ -48,17 +64,20 @@ export default class Pass extends BotInteraction {
         let embedColour = colours.discord.green;
 
         const hasHigherRole = (role: string) => {
-            if (!categorize(role)) return false;
-            const categorizedHeirarchy = heirarchy[categorize(role)];
-            const sliceFromIndex: number = categorizedHeirarchy.indexOf(role) + 1;
-            const heirarchyList = categorizedHeirarchy.slice(sliceFromIndex);
-            const heirarchyIdList = heirarchyList.map((item: string) => stripRole(roles[item]));
-            const intersection = heirarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
-            if (intersection.length === 0) {
-                return false
-            } else {
-                return true
-            };
+            try {
+                if (!categorize(role)) return false;
+                const categorizedHeirarchy = heirarchy[categorize(role)];
+                const sliceFromIndex: number = categorizedHeirarchy.indexOf(role) + 1;
+                const heirarchyList = categorizedHeirarchy.slice(sliceFromIndex);
+                const heirarchyIdList = heirarchyList.map((item: string) => stripRole(roles[item]));
+                const intersection = heirarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
+                if (intersection.length === 0) {
+                    return false
+                } else {
+                    return true
+                };
+            }
+            catch (err) { return false }
         }
 
         // Check for pre-requisite
@@ -148,7 +167,7 @@ export default class Pass extends BotInteraction {
             Congratulations to <@${userResponse.id}> on achieving ${roles[role]}!
             ${anyAdditionalRole ? `By achieving this role, they are also awarded ${roles[anyAdditionalRole]}!` : ''}
             `);
-        if (sendMessage) await channel.send({ embeds: [embed] }).then(message => {
+        if (sendMessage && channel) await channel.send({ embeds: [embed] }).then(message => {
             returnedMessage.id = message.id;
             returnedMessage.url = message.url;
         });
