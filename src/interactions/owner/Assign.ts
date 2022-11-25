@@ -47,7 +47,6 @@ export default class Pass extends BotInteraction {
         const roleObject = await interaction.guild?.roles.fetch(stripRole(roles[role])) as Role;
         let embedColour = colours.discord.green;
 
-
         const hasHigherRole = (role: string) => {
             if (!categorize(role)) return false;
             const categorizedHeirarchy = heirarchy[categorize(role)];
@@ -62,7 +61,6 @@ export default class Pass extends BotInteraction {
             };
         }
 
-        console.log(hasHigherRole(role))
         // Check for pre-requisite
         if (role in rolePrereqisites) {
             // For each key inside a role pre-requisite

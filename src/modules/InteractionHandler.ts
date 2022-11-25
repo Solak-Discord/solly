@@ -1,5 +1,5 @@
 import { Dirent, readdirSync } from 'fs';
-import { EmbedBuilder, Collection, Interaction } from 'discord.js';
+import { EmbedBuilder, Collection, Interaction, Message, InteractionResponse, ButtonInteraction, TextChannel } from 'discord.js';
 import Bot from '../Bot';
 import BotInteraction from '../types/BotInteraction';
 import EventEmitter = require('events');
@@ -106,7 +106,68 @@ export default class InteractionHandler extends EventEmitter {
         return _containsRole;
     }
 
+    public hasRolePermissions = async (roleList: string[], interaction: Interaction) => {
+        if (!interaction.inCachedGuild()) return;
+        const validRoleIds = roleList.map((key) => this.client.util.utilities.functions.stripRole(this.client.util.utilities.roles[key]));
+        const user = await interaction.guild.members.fetch(interaction.user.id);
+        const userRoles = user.roles.cache.map((role) => role.id);
+        const intersection = validRoleIds.filter((roleId) => userRoles.includes(roleId));
+        return intersection.length > 0;
+    }
+
+    public async handleButton(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        if (interaction.customId === 'rejectRoleAssign') {
+            await interaction.deferReply({ ephemeral: true });
+            if (await this.hasRolePermissions(['admin', 'owner'], interaction)) {
+                const messageEmbed = interaction.message.embeds[0];
+                const messageContent = messageEmbed.data.description;
+                const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
+                const newEmbed = new EmbedBuilder()
+                    .setTimestamp(oldTimestamp)
+                    .setColor(messageEmbed.color)
+                    .setDescription(`${messageContent}\n\n> Role Rejected by <@${interaction.user.id}> <t:${Math.round(Date.now() / 1000)}:R>.`);
+                const assignedRoles = messageContent?.match(/<@&\d*\>/gm)?.map(unstrippedRole => this.client.util.utilities.functions.stripRole(unstrippedRole));
+                const userIdRegex = messageContent?.match(/to <@\d*\>/gm);
+                const messageIdRegex = messageContent?.match(/\[\d*\]/gm)
+                let dirtyUserId;
+                let dirtyMessageId;
+                if (!assignedRoles) return;
+                if (userIdRegex) dirtyUserId = userIdRegex[0];
+                if (messageIdRegex) dirtyMessageId = messageIdRegex[0];
+                if (dirtyUserId) {
+                    const userId = dirtyUserId.slice(5, -1);
+                    const user = await interaction.guild?.members.fetch(userId);
+                    for await (const assignedId of assignedRoles) {
+                        await user.roles.remove(assignedId);
+                    };
+                }
+                if (dirtyMessageId && messageContent) {
+                    const messageId = dirtyMessageId.slice(1, -1);
+                    const channelId = messageContent.split('/channels/')[1].split('/')[1];
+                    const channel = await interaction.guild.channels.fetch(channelId) as TextChannel;
+                    const message = await channel.messages.fetch(messageId);
+                    await message.delete();
+                }
+                await interaction.message.edit({ embeds: [newEmbed], components: [] })
+                const replyEmbed = new EmbedBuilder()
+                    .setColor(this.client.util.utilities.colours.discord.green)
+                    .setDescription('Role successfully rejected!');
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            } else {
+                this.client.logger.log(
+                    {
+                        message: `Attempted restricted permissions. { command: Reject Role Assign, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                        handler: this.constructor.name,
+                    },
+                    true
+                );
+                return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+            }
+        }
+    }
+
     async exec(interaction: Interaction): Promise<any> {
+        if (interaction.isButton() && interaction.inCachedGuild()) { return this.handleButton(interaction) }
         if (interaction.isCommand() && interaction.isRepliable() && interaction.inCachedGuild()) {
             try {
                 const command = this.commands.get(interaction.commandName);
@@ -125,12 +186,7 @@ export default class InteractionHandler extends EventEmitter {
                         }
                         break;
                     case 'TRIAL_TEAM':
-                        const validRoleKeys = ['trialTeam', 'admin', 'owner'];
-                        const validRoleIds = validRoleKeys.map((key) => this.client.util.utilities.functions.stripRole(this.client.util.utilities.roles[key]));
-                        const user = await interaction.guild.members.fetch(interaction.user.id);
-                        const userRoles = user.roles.cache.map((role) => role.id);
-                        const intersection = validRoleIds.filter((roleId) => userRoles.includes(roleId));
-                        if (intersection.length === 0) {
+                        if (!(await this.hasRolePermissions(['trialTeam', 'admin', 'owner'], interaction))) {
                             this.client.logger.log(
                                 {
                                     message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
