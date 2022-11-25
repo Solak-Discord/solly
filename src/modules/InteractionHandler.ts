@@ -142,11 +142,14 @@ export default class InteractionHandler extends EventEmitter {
                     };
                 }
                 if (dirtyMessageId && messageContent) {
-                    const messageId = dirtyMessageId.slice(1, -1);
-                    const channelId = messageContent.split('/channels/')[1].split('/')[1];
-                    const channel = await interaction.guild.channels.fetch(channelId) as TextChannel;
-                    const message = await channel.messages.fetch(messageId);
-                    await message.delete();
+                    try {
+                        const messageId = dirtyMessageId.slice(1, -1);
+                        const channelId = messageContent.split('/channels/')[1].split('/')[1];
+                        const channel = await interaction.guild.channels.fetch(channelId) as TextChannel;
+                        const message = await channel.messages.fetch(messageId);
+                        await message.delete();
+                    }
+                    catch (err) { }
                 }
                 await interaction.message.edit({ embeds: [newEmbed], components: [] })
                 const replyEmbed = new EmbedBuilder()
@@ -175,6 +178,18 @@ export default class InteractionHandler extends EventEmitter {
                 switch (command.permissions) {
                     case 'OWNER':
                         if (interaction.isRepliable() && !this.client.util.config.owners.includes(interaction.user.id)) {
+                            this.client.logger.log(
+                                {
+                                    message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                                    handler: this.constructor.name,
+                                },
+                                true
+                            );
+                            return await interaction.reply({ content: 'You do not have permissions to run this command. This incident has been logged.', ephemeral: true });
+                        }
+                        break;
+                    case 'ELEVATED_ROLE':
+                        if (!(await this.hasRolePermissions(['admin', 'owner'], interaction))) {
                             this.client.logger.log(
                                 {
                                     message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,

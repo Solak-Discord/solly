@@ -11,7 +11,7 @@ export default class Say extends BotInteraction {
     }
 
     get permissions() {
-        return 'OWNER';
+        return 'ELEVATED_ROLE';
     }
 
     get slashData() {
