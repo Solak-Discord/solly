@@ -258,9 +258,9 @@ const DevChannels = {
 }
 
 const ProdChannels = {
-    roleConfirmations: '1043923758781571126',
-    achievementsAndLogs: '1043923759280697405',
-    botRoleLog: '1044636757808922766',
+    roleConfirmations: '846853673476685824',
+    achievementsAndLogs: '429378540115329044',
+    botRoleLog: '1045192967754883172',
 }
 
 const DevRoles: any = {
@@ -289,36 +289,52 @@ const DevRoles: any = {
     solakFanatic: '<@&1043923757665890442>',
     solakSlave: '<@&1043923757665890443>',
     solakSimp: '<@&1044291432531369994>',
-    solakLegend: '<@&1044291464898822204>'
+    solakLegend: '<@&1044291464898822204>',
+    nightOutWithMyRightHand: '<@&1043923757619744831>',
+    probablyUsesSpecialScissors: '<@&1043923757619744830>',
+    oneForTheBooks: '<@&1043923757619744829>',
+    brokenPrinter: '<@&1043923757619744829>',
+    merethielsSimp: '<@&1043923757598781470>',
+    shroomDealer: '<@&1043923757598781469>',
+    verifiedLearner: '<@&1043923757707829440>',
+    solakWRHolder: '<@&1043923757732999223>',
 }
 
 const ProdRoles: any = {
-    duoMaster: '<@&1043923757732999218>',
-    threeSevenMaster: '<@&1043923757707829449>',
-    master: '<@&1043923757732999219>',
-    solakAddict: '<@&1043923757665890440>',
-    trialTeam: '<@&1043923757783326780>',
-    admin: '<@&1043923757783326788>',
-    owner: '<@&1043923757783326789>',
-    duoRootskips: '<@&1043923757707829443>',
-    threeSevenRootskips: '<@&1043923757707829442>',
-    rootskips: '<@&1043923757707829444>',
-    noRealm: '<@&1043923757707829441>',
-    duoExperienced: '<@&1043923757707829446>',
-    threeSevenExperienced: '<@&1043923757707829445>',
-    experienced: '<@&1043923757707829447>',
-    duoGrandmaster: '<@&1043923757732999225>',
-    threeSevenGrandmaster: '<@&1043923757732999224>',
-    grandmaster: '<@&1043923757732999226>',
-    erethdorsBane: '<@&1043923757758156862>',
-    solakRookie: '<@&1043923757665890437>',
-    solakCasual: '<@&1043923757665890438>',
-    solakEnthusiast: '<@&1043923757665890439>',
-    unlockedPerdita: '<@&1043923757665890441>',
-    solakFanatic: '<@&1043923757665890442>',
-    solakSlave: '<@&1043923757665890443>',
-    solakSimp: '<@&1044291432531369994>',
-    solakLegend: '<@&1044291464898822204>'
+    duoMaster: '<@&1024218594504081408>',
+    threeSevenMaster: '<@&981579218771120249>',
+    master: '<@&1024260851286413322>',
+    solakAddict: '<@&553715068273950751>',
+    trialTeam: '<@&488073429975826452>',
+    admin: '<@&519490446368571392>',
+    owner: '<@&553738397848698882>',
+    duoRootskips: '<@&1007584848719912973>',
+    threeSevenRootskips: '<@&931903313144848394>',
+    rootskips: '<@&1037493398220841060>',
+    noRealm: '<@&931903143279755306>',
+    duoExperienced: '<@&931903449396834364>',
+    threeSevenExperienced: '<@&981579337159565383>',
+    experienced: '<@&981581909387800586>',
+    duoGrandmaster: '<@&1024218474727342100>',
+    threeSevenGrandmaster: '<@&969190288675450900>',
+    grandmaster: '<@&1024260846152597575>',
+    erethdorsBane: '<@&793913994980491344>',
+    solakRookie: '<@&553714327740481536>',
+    solakCasual: '<@&553714447231877130>',
+    solakEnthusiast: '<@&553714570145955892>',
+    unlockedPerdita: '<@&493153184995606558>',
+    solakFanatic: '<@&553716549593202732>',
+    solakSlave: '<@&932238504958771201>',
+    solakSimp: '<@&1038562094112587887>',
+    solakLegend: '<@&1038562124311564420>',
+    nightOutWithMyRightHand: '<@&862278802083676181>',
+    probablyUsesSpecialScissors: '<@&862278416060514314>',
+    oneForTheBooks: '<@&858689534300389416>',
+    brokenPrinter: '<@&858690604656885770>',
+    merethielsSimp: '<@&862276498098749440>',
+    shroomDealer: '<@&862276579727114250>',
+    verifiedLearner: '<@&935257969552142339>',
+    solakWRHolder: '<@&926057875367952394>',
 }
 
 const rolePrereqisites: any = {
@@ -350,7 +366,7 @@ const rolePrereqisites: any = {
 
 const categories: Categories = {
     killCount: ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita', 'solakFanatic', 'solakSlave', 'solakSimp', 'solakLegend'],
-    collectionLog: [''],
+    collectionLog: ['nightOutWithMyRightHand', 'probablyUsesSpecialScissors', 'oneForTheBooks', 'brokenPrinter', 'merethielsSimp', 'shroomDealer'],
     matchmaking: {
         threeSeven: ['noRealm', 'threeSevenRootskips', 'threeSevenExperienced', 'threeSevenMaster', 'threeSevenGrandmaster'],
         duo: ['duoRootskips', 'duoExperienced', 'duoMaster', 'duoGrandmaster'],
@@ -411,33 +427,16 @@ const categorize = (role: string): string => {
 }
 
 const categorizeChannel = (role: string) => {
+    const overrides = {
+        roleConfirmations: ['erethdorsBane', 'solakWRHolder'],
+    }
     if (categories.killCount.includes(role) || categories.collectionLog.includes(role)) {
         return 'achievementsAndLogs'
-    } else {
+    } else if (overrides.roleConfirmations.includes(role) || categories.matchmaking.combined.includes(role) || categories.matchmaking.duo.includes(role) || categories.matchmaking.threeSeven.includes(role)) {
         return 'roleConfirmations'
+    } else {
+        return ''
     }
-}
-
-const assignOptions: any = {
-    'NoRealm': 'noRealm',
-    'Duo RootSkips': 'duoRootskips',
-    '3-7 RootSkips': 'threeSevenRootskips',
-    'Duo Experienced': 'duoExperienced',
-    '3-7 Experienced': 'threeSevenExperienced',
-    'Duo Master': 'duoMaster',
-    '3-7 Master': 'threeSevenMaster',
-    'Duo Grandmaster': 'duoGrandmaster',
-    '3-7 Grandmaster': 'threeSevenGrandmaster',
-    "Erethdor's Bane": 'erethdorsBane',
-    'Solak Rookie (100KC)': 'solakRookie',
-    'Solak Casual (300KC)': 'solakCasual',
-    'Solak Enthusiast (500KC)': 'solakEnthusiast',
-    'Solak Addict (800KC)': 'solakAddict',
-    'Unlocked Perdita (1000KC)': 'unlockedPerdita',
-    'Solak Fanatic (1500KC)': 'solakFanatic',
-    'Solak Slave (3000KC)': 'solakSlave',
-    'Solak Simp (6000KC)': 'solakSimp',
-    'Solak Legend (10000KC)': 'solakLegend',
 }
 
 const Utilities = {
@@ -448,7 +447,6 @@ const Utilities = {
     rolePrereqisites,
     removeHeirarchy,
     heirarchy,
-    assignOptions,
     functions: {
         stripRole,
         categorizeChannel,
