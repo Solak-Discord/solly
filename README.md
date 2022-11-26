@@ -11,7 +11,7 @@ A project for Solak Discord staff.
 4. Set your environment ENVIRONMENT variable in `.env`.
 
 **Starting the Bot**
-```js
+```
 npm run start
 ```
 
