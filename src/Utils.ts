@@ -298,6 +298,7 @@ const DevRoles: any = {
     shroomDealer: '<@&1043923757598781469>',
     verifiedLearner: '<@&1043923757707829440>',
     solakWRHolder: '<@&1043923757732999223>',
+    guardianOfTheGrove: '<@&1043923757691047936>',
 }
 
 const ProdRoles: any = {
@@ -335,6 +336,7 @@ const ProdRoles: any = {
     shroomDealer: '<@&862276579727114250>',
     verifiedLearner: '<@&935257969552142339>',
     solakWRHolder: '<@&926057875367952394>',
+    guardianOfTheGrove: '<@&452531368132345866>',
 }
 
 const rolePrereqisites: any = {
@@ -366,7 +368,7 @@ const rolePrereqisites: any = {
 
 const categories: Categories = {
     killCount: ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita', 'solakFanatic', 'solakSlave', 'solakSimp', 'solakLegend'],
-    collectionLog: ['nightOutWithMyRightHand', 'probablyUsesSpecialScissors', 'oneForTheBooks', 'brokenPrinter', 'merethielsSimp', 'shroomDealer'],
+    collectionLog: ['nightOutWithMyRightHand', 'probablyUsesSpecialScissors', 'oneForTheBooks', 'brokenPrinter', 'merethielsSimp', 'shroomDealer', 'guardianOfTheGrove'],
     matchmaking: {
         threeSeven: ['noRealm', 'threeSevenRootskips', 'threeSevenExperienced', 'threeSevenMaster', 'threeSevenGrandmaster'],
         duo: ['duoRootskips', 'duoExperienced', 'duoMaster', 'duoGrandmaster'],

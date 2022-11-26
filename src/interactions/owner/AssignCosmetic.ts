@@ -18,6 +18,7 @@ export default class Pass extends BotInteraction {
         const assignOptions: any = {
             'Solak WR holder': 'solakWRHolder',
             "Erethdor's Bane": 'erethdorsBane',
+            'Guardian of the Grove': 'guardianOfTheGrove',
             'Solak Rookie (100KC)': 'solakRookie',
             'Solak Casual (300KC)': 'solakCasual',
             'Solak Enthusiast (500KC)': 'solakEnthusiast',
