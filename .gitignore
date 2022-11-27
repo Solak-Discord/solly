@@ -15,10 +15,11 @@ package-lock.json
 *.env
 .env
 node_modules/
-config.json
 dist/
 *.key
 *.pub
 copy.sh
 connect.sh
+*config.json
+config.json
 *.ppk
