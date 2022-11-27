@@ -12,6 +12,7 @@ out
 node_modules
 db
 package-lock.json
+*.env
 .env
 node_modules/
 config.json
@@ -20,4 +21,4 @@ dist/
 *.pub
 copy.sh
 connect.sh
-ssh.ppk
+*.ppk
