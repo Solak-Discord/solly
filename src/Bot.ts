@@ -4,6 +4,8 @@ import BotLogger from './modules/LoggingHandler';
 import InteractionHandler from './modules/InteractionHandler';
 import EventHandler from './modules/EventHandler';
 import UtilityHandler from './modules/UtilityHandler';
+import DatabaseHandler from './modules/DatabaseHandler';
+import Keyv = require('keyv');
 
 export default interface Bot extends Client {
     color: number;
@@ -14,6 +16,7 @@ export default interface Bot extends Client {
     logger: BotLogger;
     interactions: InteractionHandler;
     events: EventHandler;
+    database: Keyv<any, Record<string, unknown>>;
 }
 
 export default class Bot extends Client {
@@ -21,6 +24,7 @@ export default class Bot extends Client {
         super(options);
 
         this.color = 0x7e686c;
+        this.database = new DatabaseHandler(this, 'db.json');
         this.commandsRun = 0;
         this.util = new UtilityHandler(this);
         this.quitting = false;
