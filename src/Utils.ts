@@ -1,4 +1,6 @@
+import { Interaction } from 'discord.js';
 import 'dotenv/config';
+import Bot from './Bot';
 
 import { Categories } from './types/UtilTypes';
 
@@ -441,6 +443,15 @@ const categorizeChannel = (role: string) => {
     }
 }
 
+const hasRolePermissions = async (client: Bot, roleList: string[], interaction: Interaction) => {
+    if (!interaction.inCachedGuild()) return;
+    const validRoleIds = roleList.map((key) => client.util.utilities.functions.stripRole(client.util.utilities.roles[key]));
+    const user = await interaction.guild.members.fetch(interaction.user.id);
+    const userRoles = user.roles.cache.map((role) => role.id);
+    const intersection = validRoleIds.filter((roleId) => userRoles.includes(roleId));
+    return intersection.length > 0;
+}
+
 const Utilities = {
     colours: Colours,
     emojis: Emojis,
@@ -452,7 +463,8 @@ const Utilities = {
     functions: {
         stripRole,
         categorizeChannel,
-        categorize
+        categorize,
+        hasRolePermissions
     }
 }
 
