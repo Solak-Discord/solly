@@ -24,7 +24,7 @@ export default class ButtonHandler {
 
     private async rejectRoleAssign(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
         await interaction.deferReply({ ephemeral: true });
-        if (await this.client.util.utilities.functions.hasRolePermissions(this.client, ['admin', 'owner'], interaction)) {
+        if (await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction)) {
             const messageEmbed = interaction.message.embeds[0];
             const messageContent = messageEmbed.data.description;
             const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
@@ -32,7 +32,7 @@ export default class ButtonHandler {
                 .setTimestamp(oldTimestamp)
                 .setColor(messageEmbed.color)
                 .setDescription(`${messageContent}\n\n> Role Rejected by <@${this.userId}> <t:${this.currentTime}:R>.`);
-            const assignedRoles = messageContent?.match(/<@&\d*\>/gm)?.map(unstrippedRole => this.client.util.utilities.functions.stripRole(unstrippedRole));
+            const assignedRoles = messageContent?.match(/<@&\d*\>/gm)?.map(unstrippedRole => this.client.util.stripRole(unstrippedRole));
             const userIdRegex = messageContent?.match(/to <@\d*\>/gm);
             const messageIdRegex = messageContent?.match(/\[\d*\]/gm)
             let dirtyUserId;
@@ -59,7 +59,7 @@ export default class ButtonHandler {
             }
             await interaction.message.edit({ embeds: [newEmbed], components: [] })
             const replyEmbed = new EmbedBuilder()
-                .setColor(this.client.util.utilities.colours.discord.green)
+                .setColor(this.client.util.colours.discord.green)
                 .setDescription('Role successfully rejected!');
             return await interaction.editReply({ embeds: [replyEmbed] });
         } else {

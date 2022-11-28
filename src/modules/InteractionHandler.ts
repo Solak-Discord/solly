@@ -129,7 +129,7 @@ export default class InteractionHandler extends EventEmitter {
                         }
                         break;
                     case 'ELEVATED_ROLE':
-                        if (!(await this.client.util.utilities.functions.hasRolePermissions(this.client, ['admin', 'owner'], interaction))) {
+                        if (!(await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction))) {
                             this.client.logger.log(
                                 {
                                     message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
@@ -141,7 +141,7 @@ export default class InteractionHandler extends EventEmitter {
                         }
                         break;
                     case 'TRIAL_TEAM':
-                        if (!(await this.client.util.utilities.functions.hasRolePermissions(this.client, ['trialTeam', 'admin', 'owner'], interaction))) {
+                        if (!(await this.client.util.hasRolePermissions(this.client, ['trialTeam', 'admin', 'owner'], interaction))) {
                             this.client.logger.log(
                                 {
                                     message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,

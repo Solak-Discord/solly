@@ -1,26 +1,211 @@
 import * as config from '../../config.json';
-import { EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction, Interaction } from 'discord.js';
 import Bot from '../Bot';
-import Utilities from '../Utils';
 
 export default interface UtilityHandler {
     client: Bot;
     config: typeof config;
-    utilities: typeof Utilities;
     random(array: Array<any>): Array<number>;
     loadingEmbed: EmbedBuilder;
     loadingText: string;
+}
+
+interface Channels {
+    [channelName: string]: string;
+}
+
+interface Roles {
+    [roleName: string]: string;
+}
+
+interface Categories {
+    killCount: string[]
+    collectionLog: string[]
+    matchmaking: MatchmakingCategory
+}
+
+interface MatchmakingCategory {
+    threeSeven: string[]
+    duo: string[]
+    combined: string[]
 }
 
 export default class UtilityHandler {
     constructor(client: Bot) {
         this.client = client;
         this.config = config;
-        this.utilities = Utilities;
         this.random = (array) => array[Math.floor(Math.random() * array.length)];
         this.deleteMessage = this.deleteMessage;
         this.loadingEmbed = new EmbedBuilder().setAuthor({ name: 'Loading...' });
         this.loadingText = '<a:Typing:598682375303593985> **Loading...**';
+    }
+
+    get colours() {
+        return {
+            green: 2067276,
+            aqua: 1146986,
+            blue: 2123412,
+            red: 10038562,
+            lightgrey: 10070709,
+            gold: 12745742,
+            default: 5198940,
+            lightblue: 302332,
+            darkgrey: 333333,
+            discord: {
+                green: 5763719,
+                red: 15548997
+            }
+        }
+    }
+
+    get channels(): Channels {
+        if (process.env.ENVIRONMENT === 'DEVELOPMENT') {
+            return {
+                roleConfirmations: '1043923758781571126',
+                achievementsAndLogs: '1043923759280697405',
+                botRoleLog: '1044636757808922766',
+            }
+        }
+        return {
+            roleConfirmations: '846853673476685824',
+            achievementsAndLogs: '429378540115329044',
+            botRoleLog: '1045192967754883172',
+        }
+    }
+
+    get roles(): Roles {
+        if (process.env.ENVIRONMENT === 'DEVELOPMENT') {
+            return {
+                duoMaster: '<@&1043923757732999218>',
+                threeSevenMaster: '<@&1043923757707829449>',
+                master: '<@&1043923757732999219>',
+                solakAddict: '<@&1043923757665890440>',
+                trialTeam: '<@&1043923757783326780>',
+                admin: '<@&1043923757783326788>',
+                owner: '<@&1043923757783326789>',
+                duoRootskips: '<@&1043923757707829443>',
+                threeSevenRootskips: '<@&1043923757707829442>',
+                rootskips: '<@&1043923757707829444>',
+                noRealm: '<@&1043923757707829441>',
+                duoExperienced: '<@&1043923757707829446>',
+                threeSevenExperienced: '<@&1043923757707829445>',
+                experienced: '<@&1043923757707829447>',
+                duoGrandmaster: '<@&1043923757732999225>',
+                threeSevenGrandmaster: '<@&1043923757732999224>',
+                grandmaster: '<@&1043923757732999226>',
+                erethdorsBane: '<@&1043923757758156862>',
+                solakRookie: '<@&1043923757665890437>',
+                solakCasual: '<@&1043923757665890438>',
+                solakEnthusiast: '<@&1043923757665890439>',
+                unlockedPerdita: '<@&1043923757665890441>',
+                solakFanatic: '<@&1043923757665890442>',
+                solakSlave: '<@&1043923757665890443>',
+                solakSimp: '<@&1044291432531369994>',
+                solakLegend: '<@&1044291464898822204>',
+                nightOutWithMyRightHand: '<@&1043923757619744831>',
+                probablyUsesSpecialScissors: '<@&1043923757619744830>',
+                oneForTheBooks: '<@&1043923757619744829>',
+                brokenPrinter: '<@&1043923757619744829>',
+                merethielsSimp: '<@&1043923757598781470>',
+                shroomDealer: '<@&1043923757598781469>',
+                verifiedLearner: '<@&1043923757707829440>',
+                solakWRHolder: '<@&1043923757732999223>',
+                guardianOfTheGrove: '<@&1043923757691047936>',
+            }
+        }
+        return {
+            duoMaster: '<@&1024218594504081408>',
+            threeSevenMaster: '<@&981579218771120249>',
+            master: '<@&1024260851286413322>',
+            solakAddict: '<@&553715068273950751>',
+            trialTeam: '<@&488073429975826452>',
+            admin: '<@&519490446368571392>',
+            owner: '<@&553738397848698882>',
+            duoRootskips: '<@&1007584848719912973>',
+            threeSevenRootskips: '<@&931903313144848394>',
+            rootskips: '<@&1037493398220841060>',
+            noRealm: '<@&931903143279755306>',
+            duoExperienced: '<@&931903449396834364>',
+            threeSevenExperienced: '<@&981579337159565383>',
+            experienced: '<@&981581909387800586>',
+            duoGrandmaster: '<@&1024218474727342100>',
+            threeSevenGrandmaster: '<@&969190288675450900>',
+            grandmaster: '<@&1024260846152597575>',
+            erethdorsBane: '<@&793913994980491344>',
+            solakRookie: '<@&553714327740481536>',
+            solakCasual: '<@&553714447231877130>',
+            solakEnthusiast: '<@&553714570145955892>',
+            unlockedPerdita: '<@&493153184995606558>',
+            solakFanatic: '<@&553716549593202732>',
+            solakSlave: '<@&932238504958771201>',
+            solakSimp: '<@&1038562094112587887>',
+            solakLegend: '<@&1038562124311564420>',
+            nightOutWithMyRightHand: '<@&862278802083676181>',
+            probablyUsesSpecialScissors: '<@&862278416060514314>',
+            oneForTheBooks: '<@&858689534300389416>',
+            brokenPrinter: '<@&858690604656885770>',
+            merethielsSimp: '<@&862276498098749440>',
+            shroomDealer: '<@&862276579727114250>',
+            verifiedLearner: '<@&935257969552142339>',
+            solakWRHolder: '<@&926057875367952394>',
+            guardianOfTheGrove: '<@&452531368132345866>',
+        }
+    }
+
+    get categories(): Categories {
+        return {
+            killCount: ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita', 'solakFanatic', 'solakSlave', 'solakSimp', 'solakLegend'],
+            collectionLog: ['nightOutWithMyRightHand', 'probablyUsesSpecialScissors', 'oneForTheBooks', 'brokenPrinter', 'merethielsSimp', 'shroomDealer', 'guardianOfTheGrove'],
+            matchmaking: {
+                threeSeven: ['noRealm', 'threeSevenRootskips', 'threeSevenExperienced', 'threeSevenMaster', 'threeSevenGrandmaster'],
+                duo: ['duoRootskips', 'duoExperienced', 'duoMaster', 'duoGrandmaster'],
+                combined: ['rootskips', 'experienced', 'master', 'grandmaster']
+            }
+        }
+    }
+
+    public stripRole = (role: string) => {
+        return role.slice(3, -1)
+    }
+
+    public categorize = (role: string): string => {
+        let category = '';
+        if (this.categories.killCount.includes(role)) {
+            category = 'killCount';
+        } else if (this.categories.collectionLog.includes(role)) {
+            category = 'collectionLog';
+        } else if (this.categories.matchmaking.threeSeven.includes(role)) {
+            category = 'threeSeven';
+        } else if (this.categories.matchmaking.duo.includes(role)) {
+            category = 'duo';
+        } else if (this.categories.matchmaking.combined.includes(role)) {
+            category = 'combined';
+        } else {
+            category = ''
+        }
+        return category;
+    }
+
+    public categorizeChannel = (role: string) => {
+        const overrides = {
+            roleConfirmations: ['erethdorsBane', 'solakWRHolder'],
+        }
+        if (this.categories.killCount.includes(role) || this.categories.collectionLog.includes(role)) {
+            return 'achievementsAndLogs'
+        } else if (overrides.roleConfirmations.includes(role) || this.categories.matchmaking.combined.includes(role) || this.categories.matchmaking.duo.includes(role) || this.categories.matchmaking.threeSeven.includes(role)) {
+            return 'roleConfirmations'
+        } else {
+            return ''
+        }
+    }
+
+    public hasRolePermissions = async (client: Bot, roleList: string[], interaction: Interaction) => {
+        if (!interaction.inCachedGuild()) return;
+        const validRoleIds = roleList.map((key) => this.stripRole(this.roles[key]));
+        const user = await interaction.guild.members.fetch(interaction.user.id);
+        const userRoles = user.roles.cache.map((role) => role.id);
+        const intersection = validRoleIds.filter((roleId) => userRoles.includes(roleId));
+        return intersection.length > 0;
     }
 
     public deleteMessage(interaction: ChatInputCommandInteraction<any>, id: string) {

@@ -1,6 +1,13 @@
 import BotInteraction from '../../types/BotInteraction';
 import { ChatInputCommandInteraction, SlashCommandBuilder, User, Role, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
+interface Hierarchy {
+    [key: string]: string[];
+}
+
+interface RemoveHierarchy {
+    [key: string]: string[];
+}
 export default class Pass extends BotInteraction {
     get name() {
         return 'assign-cosmetic';
@@ -14,7 +21,26 @@ export default class Pass extends BotInteraction {
         return 'TRIAL_TEAM';
     }
 
-    get slashData() {
+    get hierarchy(): Hierarchy {
+        return {
+            killCount: ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita', 'solakFanatic', 'solakSlave', 'solakSimp', 'solakLegend']
+        }
+    }
+
+    get removeHierarchy(): RemoveHierarchy {
+        return {
+            'solakCasual': ['solakRookie'],
+            'solakEnthusiast': ['solakRookie', 'solakCasual'],
+            'solakAddict': ['solakRookie', 'solakCasual', 'solakEnthusiast'],
+            'unlockedPerdita': ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict'],
+            'solakFanatic': ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita'],
+            'solakSlave': ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita', 'solakFanatic'],
+            'solakSimp': ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita', 'solakFanatic', 'solakSlave'],
+            'solakLegend': ['solakRookie', 'solakCasual', 'solakEnthusiast', 'solakAddict', 'unlockedPerdita', 'solakFanatic', 'solakSlave', 'solakSimp'],
+        }
+    }
+
+    get options() {
         const assignOptions: any = {
             'Solak WR holder': 'solakWRHolder',
             "Erethdor's Bane": 'erethdorsBane',
@@ -35,16 +61,20 @@ export default class Pass extends BotInteraction {
             "Merethiel's Simp (10 Staves)": 'merethielsSimp',
             'Shroom Dealer (10 Mushrooms)': 'shroomDealer'
         }
-        const RoleOptions: any = [];
+        const options: any = [];
         Object.keys(assignOptions).forEach((key: string) => {
-            RoleOptions.push({ name: key, value: assignOptions[key] })
+            options.push({ name: key, value: assignOptions[key] })
         })
+        return options;
+    }
+
+    get slashData() {
         return new SlashCommandBuilder()
             .setName(this.name)
             .setDescription(this.description)
             .addUserOption((option) => option.setName('user').setDescription('User').setRequired(true))
             .addStringOption((option) => option.setName('role').setDescription('Role').addChoices(
-                ...RoleOptions
+                ...this.options
             ).setRequired(true))
     }
 
@@ -53,17 +83,16 @@ export default class Pass extends BotInteraction {
         const userResponse: User = interaction.options.getUser('user', true);
         const role: string = interaction.options.getString('role', true);
 
-        const { stripRole, categorizeChannel, categorize } = this.client.util.utilities.functions;
-        const { roles, colours, removeHeirarchy, channels, heirarchy } = this.client.util.utilities;
+        const { roles, colours, channels, stripRole, categorizeChannel, categorize } = this.client.util;
 
-        const outputChannelId = categorizeChannel(role) ? (channels as any)[categorizeChannel(role)] : '';
+        const outputChannelId = categorizeChannel(role) ? channels[categorizeChannel(role)] : '';
         let channel;
         if (outputChannelId) {
             channel = await this.client.channels.fetch(outputChannelId) as TextChannel;
         }
 
         const user = await interaction.guild?.members.fetch(userResponse.id);
-        const userRoles = user?.roles.cache.map(role => role.id) || [];
+        const userRoles = await user?.roles.cache.map(role => role.id) || [];
 
         let sendMessage = false;
         let anyAdditionalRole;
@@ -73,11 +102,11 @@ export default class Pass extends BotInteraction {
         const hasHigherRole = (role: string) => {
             try {
                 if (!categorize(role)) return false;
-                const categorizedHeirarchy = heirarchy[categorize(role)];
-                const sliceFromIndex: number = categorizedHeirarchy.indexOf(role) + 1;
-                const heirarchyList = categorizedHeirarchy.slice(sliceFromIndex);
-                const heirarchyIdList = heirarchyList.map((item: string) => stripRole(roles[item]));
-                const intersection = heirarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
+                const categorizedHierarchy = this.hierarchy.killCount;
+                const sliceFromIndex: number = categorizedHierarchy.indexOf(role) + 1;
+                const hierarchyList = categorizedHierarchy.slice(sliceFromIndex);
+                const hierarchyIdList = hierarchyList.map((item: string) => stripRole(roles[item]));
+                const intersection = hierarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
                 if (intersection.length === 0) {
                     return false
                 } else {
@@ -93,10 +122,10 @@ export default class Pass extends BotInteraction {
         if (!(userRoles?.includes(roleId)) && !hasHigherRole(role)) {
             sendMessage = true;
         }
-        if (role in removeHeirarchy) {
-            for await (const roleToRemove of removeHeirarchy[role]) {
+        if (role in this.removeHierarchy) {
+            for await (const roleToRemove of this.removeHierarchy[role]) {
                 const removeRoleId = stripRole(roles[roleToRemove]);
-                await user?.roles.remove(removeRoleId);
+                if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
             };
         }
 
@@ -104,6 +133,7 @@ export default class Pass extends BotInteraction {
             id: '',
             url: ''
         };
+
         const embed = new EmbedBuilder()
             .setAuthor({ name: interaction.user.username, iconURL: interaction.user.avatarURL() || '' })
             .setTimestamp()

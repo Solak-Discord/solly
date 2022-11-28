@@ -1,6 +1,21 @@
 import BotInteraction from '../../types/BotInteraction';
 import { ChatInputCommandInteraction, SlashCommandBuilder, User, Role, TextChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
+interface Hierarchy {
+    [key: string]: string[];
+}
+
+interface RemoveHierarchy {
+    [key: string]: string[];
+}
+interface Prerequisites {
+    [prerequisite: string]: Prerequisite
+}
+
+interface Prerequisite {
+    [key: string]: string[]
+}
+
 export default class Pass extends BotInteraction {
     get name() {
         return 'assign-matchmaking';
@@ -14,7 +29,60 @@ export default class Pass extends BotInteraction {
         return 'TRIAL_TEAM';
     }
 
-    get slashData() {
+    get prerequisites(): Prerequisites {
+        return {
+            'duoRootskips': {
+                'rootskips': ['threeSevenRootskips']
+            },
+            'threeSevenRootskips': {
+                'rootskips': ['duoRootskips']
+            },
+            'duoExperienced': {
+                'experienced': ['threeSevenExperienced']
+            },
+            'threeSevenExperienced': {
+                'experienced': ['duoExperienced']
+            },
+            'duoMaster': {
+                'master': ['threeSevenMaster']
+            },
+            'threeSevenMaster': {
+                'master': ['duoMaster']
+            },
+            'duoGrandmaster': {
+                'grandmaster': ['threeSevenGrandmaster']
+            },
+            'threeSevenGrandmaster': {
+                'grandmaster': ['duoGrandmaster']
+            }
+        }
+    }
+
+    get removeHierarchy(): RemoveHierarchy {
+        return {
+            'threeSevenRootskips': ['noRealm'],
+            'duoExperienced': ['duoRootskips'],
+            'threeSevenExperienced': ['threeSevenRootskips', 'noRealm'],
+            'duoMaster': ['duoExperienced', 'duoRootskips'],
+            'threeSevenMaster': ['threeSevenExperienced', 'threeSevenRootskips', 'noRealm'],
+            'duoGrandmaster': ['duoMaster', 'duoExperienced', 'duoRootskips'],
+            'threeSevenGrandmaster': ['threeSevenMaster', 'threeSevenExperienced', 'threeSevenRootskips', 'noRealm'],
+            'rootskips': ['noRealm'],
+            'experienced': ['noRealm', 'rootskips'],
+            'master': ['noRealm', 'rootskips', 'experienced'],
+            'grandmaster': ['noRealm', 'rootskips', 'experienced', 'master'],
+        }
+    }
+
+    get hierarchy(): Hierarchy {
+        return {
+            threeSeven: ['noRealm', 'threeSevenRootskips', 'rootskips', 'threeSevenExperienced', 'experienced', 'threeSevenMaster', 'master', 'threeSevenGrandmaster', 'grandmaster'],
+            duo: ['duoRootskips', 'rootskips', 'duoExperienced', 'experienced', 'duoMaster', 'master', 'duoGrandmaster', 'grandmaster'],
+            combined: ['rootskips', 'experienced', 'master', 'grandmaster'],
+        }
+    }
+
+    get options() {
         const assignOptions: any = {
             'Verified Learner': 'verifiedLearner',
             'NoRealm': 'noRealm',
@@ -27,16 +95,20 @@ export default class Pass extends BotInteraction {
             'Duo Grandmaster': 'duoGrandmaster',
             '3-7 Grandmaster': 'threeSevenGrandmaster'
         }
-        const RoleOptions: any = [];
+        const options: any = [];
         Object.keys(assignOptions).forEach((key: string) => {
-            RoleOptions.push({ name: key, value: assignOptions[key] })
+            options.push({ name: key, value: assignOptions[key] })
         })
+        return options;
+    }
+
+    get slashData() {
         return new SlashCommandBuilder()
             .setName(this.name)
             .setDescription(this.description)
             .addUserOption((option) => option.setName('user').setDescription('User').setRequired(true))
             .addStringOption((option) => option.setName('role').setDescription('Role').addChoices(
-                ...RoleOptions
+                ...this.options
             ).setRequired(true))
     }
 
@@ -45,9 +117,7 @@ export default class Pass extends BotInteraction {
         const userResponse: User = interaction.options.getUser('user', true);
         const role: string = interaction.options.getString('role', true);
 
-        const { stripRole, categorizeChannel, categorize } = this.client.util.utilities.functions;
-        // const { Categories } = this.client.util.utilities.enums;
-        const { roles, colours, rolePrereqisites, removeHeirarchy, channels, heirarchy } = this.client.util.utilities;
+        const { roles, colours, channels, stripRole, categorizeChannel, categorize } = this.client.util;
 
         const outputChannelId = categorizeChannel(role) ? (channels as any)[categorizeChannel(role)] : '';
         let channel;
@@ -66,11 +136,11 @@ export default class Pass extends BotInteraction {
         const hasHigherRole = (role: string) => {
             try {
                 if (!categorize(role)) return false;
-                const categorizedHeirarchy = heirarchy[categorize(role)];
-                const sliceFromIndex: number = categorizedHeirarchy.indexOf(role) + 1;
-                const heirarchyList = categorizedHeirarchy.slice(sliceFromIndex);
-                const heirarchyIdList = heirarchyList.map((item: string) => stripRole(roles[item]));
-                const intersection = heirarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
+                const categorizedHierarchy = this.hierarchy[categorize(role)];
+                const sliceFromIndex: number = categorizedHierarchy.indexOf(role) + 1;
+                const hierarchyList = categorizedHierarchy.slice(sliceFromIndex);
+                const hierarchyIdList = hierarchyList.map((item: string) => stripRole(roles[item]));
+                const intersection = hierarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
                 if (intersection.length === 0) {
                     return false
                 } else {
@@ -81,16 +151,16 @@ export default class Pass extends BotInteraction {
         }
 
         // Check for pre-requisite
-        if (role in rolePrereqisites) {
+        if (role in this.prerequisites) {
             // For each key inside a role pre-requisite
-            for (const key in rolePrereqisites[role]) {
+            for (const key in this.prerequisites[role]) {
                 // Break out if they have the role already or if they have any higher role
                 if (userRoles?.includes(stripRole(roles[key])) && hasHigherRole(role)) {
                     break;
                 };
                 let assign = true;
                 // Loop over each role and check if they have all pre-requisites
-                rolePrereqisites[role][key].forEach((prereqRole: string) => {
+                this.prerequisites[role][key].forEach((prereqRole: string) => {
                     const roleId = stripRole(roles[prereqRole]);
                     if (!(userRoles?.includes(roleId))) {
                         assign = false;
@@ -102,39 +172,39 @@ export default class Pass extends BotInteraction {
                     if (!(userRoles?.includes(assignedRoleId)) && !hasHigherRole(role)) {
                         sendMessage = true;
                     }
-                    if (!hasHigherRole(role)) await user?.roles.add(assignedRoleId);
+                    if (!hasHigherRole(role) && !userRoles?.includes(assignedRoleId)) await user?.roles.add(assignedRoleId);
                     embedColour = roleObject.color;
-                    rolePrereqisites[role][key].forEach((prereqRole: string) => {
+                    this.prerequisites[role][key].forEach((prereqRole: string) => {
                         const roleId = stripRole(roles[prereqRole]);
-                        user?.roles.remove(roleId);
+                        if (userRoles?.includes(roleId)) user?.roles.remove(roleId);
                     })
                     // Remove inferior roles for combination roles
-                    if ((key in removeHeirarchy) && !hasHigherRole(role)) {
-                        for await (const roleToRemove of removeHeirarchy[key]) {
+                    if ((key in this.removeHierarchy) && !hasHigherRole(role)) {
+                        for await (const roleToRemove of this.removeHierarchy[key]) {
                             const removeRoleId = stripRole(roles[roleToRemove]);
-                            await user?.roles.remove(removeRoleId);
+                            if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
                         };
                     }
-                    if ((role in removeHeirarchy) && !hasHigherRole(role)) {
-                        for await (const roleToRemove of removeHeirarchy[role]) {
+                    if ((role in this.removeHierarchy) && !hasHigherRole(role)) {
+                        for await (const roleToRemove of this.removeHierarchy[role]) {
                             const removeRoleId = stripRole(roles[roleToRemove]);
-                            await user?.roles.remove(removeRoleId);
+                            if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
                         };
                     }
                     anyAdditionalRole = key;
                     // Just add the new role as no pre-requisites for the combined role
                 } else {
                     const roleId = stripRole(roles[role]);
-                    if (!hasHigherRole(role)) user?.roles.add(roleId);
+                    if (!hasHigherRole(role) && !userRoles?.includes(roleId)) user?.roles.add(roleId);
                     embedColour = roleObject.color;
                     if (!(userRoles?.includes(roleId)) && !hasHigherRole(role)) {
                         sendMessage = true;
                     }
                     // Remove inferior roles
-                    if ((role in removeHeirarchy) && !hasHigherRole(role)) {
-                        for await (const roleToRemove of removeHeirarchy[role]) {
+                    if ((role in this.removeHierarchy) && !hasHigherRole(role)) {
+                        for await (const roleToRemove of this.removeHierarchy[role]) {
                             const removeRoleId = stripRole(roles[roleToRemove]);
-                            await user?.roles.remove(removeRoleId);
+                            if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
                         };
                     }
                 }
@@ -142,15 +212,15 @@ export default class Pass extends BotInteraction {
             // No pre-requisite needed so just assign role
         } else {
             const roleId = stripRole(roles[role]);
-            if (!hasHigherRole(role)) await user?.roles.add(roleId);
+            if (!hasHigherRole(role) && !userRoles?.includes(roleId)) await user?.roles.add(roleId);
             embedColour = roleObject.color;
             if (!(userRoles?.includes(roleId)) && !hasHigherRole(role)) {
                 sendMessage = true;
             }
-            if (role in removeHeirarchy) {
-                for await (const roleToRemove of removeHeirarchy[role]) {
+            if (role in this.removeHierarchy) {
+                for await (const roleToRemove of this.removeHierarchy[role]) {
                     const removeRoleId = stripRole(roles[roleToRemove]);
-                    await user?.roles.remove(removeRoleId);
+                    if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
                 };
             }
         }
