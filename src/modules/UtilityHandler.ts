@@ -105,7 +105,7 @@ export default class UtilityHandler {
                 nightOutWithMyRightHand: '<@&1043923757619744831>',
                 probablyUsesSpecialScissors: '<@&1043923757619744830>',
                 oneForTheBooks: '<@&1043923757619744829>',
-                brokenPrinter: '<@&1043923757619744829>',
+                brokenPrinter: '<@&1043923757619744828>',
                 merethielsSimp: '<@&1043923757598781470>',
                 shroomDealer: '<@&1043923757598781469>',
                 verifiedLearner: '<@&1043923757707829440>',
