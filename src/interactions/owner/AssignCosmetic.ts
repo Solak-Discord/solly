@@ -102,7 +102,8 @@ export default class Pass extends BotInteraction {
         const hasHigherRole = (role: string) => {
             try {
                 if (!categorize(role)) return false;
-                const categorizedHierarchy = this.hierarchy.killCount;
+                const categorizedHierarchy = this.hierarchy[categorize(role)];
+                if (!categorizedHierarchy) return false;
                 const sliceFromIndex: number = categorizedHierarchy.indexOf(role) + 1;
                 const hierarchyList = categorizedHierarchy.slice(sliceFromIndex);
                 const hierarchyIdList = hierarchyList.map((item: string) => stripRole(roles[item]));
