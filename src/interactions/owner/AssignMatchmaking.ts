@@ -230,7 +230,7 @@ export default class Pass extends BotInteraction {
             url: ''
         };
         const embed = new EmbedBuilder()
-            .setAuthor({ name: interaction.user.username, iconURL: interaction.user.avatarURL() || '' })
+            .setAuthor({ name: interaction.user.username, iconURL: interaction.user.avatarURL() || this.client.user?.avatarURL() || 'https://media.discordapp.net/attachments/1027186342620299315/1047598720834875422/618px-Solly_pet_1.png' })
             .setTimestamp()
             .setColor(embedColour)
             .setDescription(`
