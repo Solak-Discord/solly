@@ -1,4 +1,4 @@
-import { ButtonInteraction, EmbedBuilder, InteractionResponse, Message, TextChannel } from 'discord.js';
+import { ButtonInteraction, EmbedBuilder, GuildMember, InteractionResponse, Message, TextChannel } from 'discord.js';
 import Bot from '../Bot';
 
 export default interface ButtonHandler { client: Bot; id: string; interaction: ButtonInteraction }
@@ -152,6 +152,27 @@ export default class ButtonHandler {
             let embedMessage = '';
             let reportCount = 0;
 
+            // Attempt to DM a notification to trialee.
+            const sendRoleRemovalDM = async (user: GuildMember) => {
+                try {
+                    const dmEmbed = new EmbedBuilder()
+                        .setTitle('Your role has been removed.')
+                        .setColor(this.client.util.colours.discord.red)
+                        .setDescription(`
+                        Your role has been degraded due to multiple approved reports.
+                        `);
+                    await user.send({ embeds: [dmEmbed] });
+                } catch {
+                    this.client.logger.log(
+                        {
+                            message: `Attempted to send report role degradation notification. { user: ${user.id} }`,
+                            handler: this.constructor.name,
+                        },
+                        true
+                    );
+                }
+            }
+
             if (dirtySubmitterId && dirtyReportedUserId && dirtyRoleId) {
                 // Initialize reports
                 let removeRole = false
@@ -184,14 +205,15 @@ export default class ButtonHandler {
                     // Does not have the role.
                     if (!userRoles.includes(roleId) && !userRoles.includes(combinationRoleId)) {
                         handled = true;
-                        embedMessage = `This user does not have this role to remove.`
+                        embedMessage = `This user does not have this role to remove.`;
                     }
                     // Has the role, but the role has no combination role
                     if (userRoles.includes(roleId) && !combinationRoleId && !combinationKey) {
                         await user?.roles.remove(roleId);
                         userRoles = userRoles.filter(item => item !== roleId);
                         handled = true;
-                        embedMessage = `${dirtyRoleId} was removed.\n`
+                        embedMessage = `${dirtyRoleId} was removed.\n`;
+                        sendRoleRemovalDM(user);
                     }
                     // Has the role but no combination role (just in case)
                     if (userRoles.includes(roleId) && !userRoles.includes(combinationRoleId) && (handled === false)) {
@@ -205,10 +227,11 @@ export default class ButtonHandler {
                         if ((newCombinedCategoryIndex !== null) && userRoles.includes(stripRole(roles[categories.combined[newCombinedCategoryIndex]]))) {
                             // Do nothing. Tags are already removed and combo role for degraded role already exists.
                             embedMessage = `
-                        ${dirtyRoleId} was removed.
-                        <@${user.id}> already has <@&${roles[categories[category][newCombinedCategoryIndex]]}>.
-                        No degraded role was assigned.
-                        `
+                            ${dirtyRoleId} was removed.
+                            <@${user.id}> already has <@&${roles[categories[category][newCombinedCategoryIndex]]}>.
+                            No degraded role was assigned.
+                            `
+                            sendRoleRemovalDM(user);
                         } else {
                             // They don't have the combined role, therefore we have to add degraded role and opposite role.
                             const reportedCategoryIndex = categories[category].indexOf(roleKey);
@@ -275,6 +298,7 @@ export default class ButtonHandler {
                                     }
                                 }
                                 embedMessage = `${dirtyRoleId} was degraded into ${anyAdditionalRole ? `${roles[anyAdditionalRole]}` : `${roles[newRoleKey]}`}.\n`;
+                                sendRoleRemovalDM(user);
                             }
                         }
                         handled = true;
@@ -323,10 +347,11 @@ export default class ButtonHandler {
                                 oppositeRoleAdded = true;
                             }
                             embedMessage = `
-                        <@&${combinationRoleId}> was removed.
-                        ${degradedRoleAdded ? `<@&${degradedRoleId}> was assigned.` : ''}
-                        ${oppositeRoleAdded ? `<@&${oppositeRoleId}> was also assigned.` : ''}
-                        `
+                            <@&${combinationRoleId}> was removed.
+                            ${degradedRoleAdded ? `<@&${degradedRoleId}> was assigned.` : ''}
+                            ${oppositeRoleAdded ? `<@&${oppositeRoleId}> was also assigned.` : ''}
+                            `;
+                            sendRoleRemovalDM(user);
                         }
                     }
                 } else {
