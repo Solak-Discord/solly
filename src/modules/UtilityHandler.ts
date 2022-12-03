@@ -64,12 +64,14 @@ export default class UtilityHandler {
                 roleConfirmations: '1043923758781571126',
                 achievementsAndLogs: '1043923759280697405',
                 botRoleLog: '1044636757808922766',
+                reportLog: '1047434337647329330',
             }
         }
         return {
             roleConfirmations: '846853673476685824',
             achievementsAndLogs: '429378540115329044',
             botRoleLog: '1045192967754883172',
+            reportLog: '1046699857433342103',
         }
     }
 
@@ -166,6 +168,10 @@ export default class UtilityHandler {
 
     public stripRole = (role: string) => {
         return role.slice(3, -1)
+    }
+
+    public getKeyFromValue = (obj: any, value: string): any => {
+        return Object.keys(obj).find(key => obj[key] === value)
     }
 
     public categorize = (role: string): string => {

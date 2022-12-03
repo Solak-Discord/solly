@@ -23,3 +23,4 @@ connect.sh
 *config.json
 config.json
 *.ppk
+db.json

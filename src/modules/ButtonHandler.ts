@@ -10,6 +10,8 @@ export default class ButtonHandler {
         this.interaction = interaction;
         switch (id) {
             case 'rejectRoleAssign': this.rejectRoleAssign(interaction); break;
+            case 'approveReport': this.approveReport(interaction); break;
+            case 'rejectReport': this.rejectReport(interaction); break;
             default: break;
         }
     }
@@ -20,6 +22,343 @@ export default class ButtonHandler {
 
     get currentTime(): number {
         return Math.round(Date.now() / 1000)
+    }
+
+    private async rejectReport(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await interaction.deferReply({ ephemeral: true });
+        if (await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction)) {
+            const messageEmbed = interaction.message.embeds[0];
+            const messageContent = messageEmbed.data.description;
+            const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
+            const newEmbed = new EmbedBuilder()
+                .setTimestamp(oldTimestamp)
+                .setColor(messageEmbed.color)
+                .setDescription(`
+                ${messageContent}\n
+                > Report rejected by <@${this.userId}> <t:${this.currentTime}:R>.`);
+            if (messageEmbed.image) newEmbed.setImage(messageEmbed.image.url);
+            await interaction.message.edit({ embeds: [newEmbed], components: [] })
+            const replyEmbed = new EmbedBuilder()
+                .setColor(this.client.util.colours.discord.green)
+                .setDescription('Report successfully rejected!');
+            return await interaction.editReply({ embeds: [replyEmbed] });
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Reject Report, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async approveReport(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+
+        interface CombinationParent {
+            [roleKey: string]: string;
+        }
+
+        interface Categories {
+            [category: string]: string[];
+        }
+
+        interface Prerequisites {
+            [prerequisite: string]: Prerequisite
+        }
+
+        interface Prerequisite {
+            [key: string]: string[]
+        }
+
+        interface RemoveHierarchy {
+            [key: string]: string[];
+        }
+
+        const prerequisites: Prerequisites = {
+            'duoRootskips': {
+                'rootskips': ['threeSevenRootskips']
+            },
+            'threeSevenRootskips': {
+                'rootskips': ['duoRootskips']
+            },
+            'duoExperienced': {
+                'experienced': ['threeSevenExperienced']
+            },
+            'threeSevenExperienced': {
+                'experienced': ['duoExperienced']
+            },
+            'duoMaster': {
+                'master': ['threeSevenMaster']
+            },
+            'threeSevenMaster': {
+                'master': ['duoMaster']
+            },
+            'duoGrandmaster': {
+                'grandmaster': ['threeSevenGrandmaster']
+            },
+            'threeSevenGrandmaster': {
+                'grandmaster': ['duoGrandmaster']
+            }
+        }
+
+        const combinationParent: CombinationParent = {
+            'duoRootskips': 'rootskips',
+            'threeSevenRootskips': 'rootskips',
+            'duoExperienced': 'experienced',
+            'threeSevenExperienced': 'experienced',
+            'duoMaster': 'master',
+            'threeSevenMaster': 'master',
+            'duoGrandmaster': 'grandmaster',
+            'threeSevenGrandmaster': 'grandmaster'
+        }
+
+        const categories: Categories = {
+            duo: ['noRealm', 'duoRootskips', 'duoExperienced', 'duoMaster', 'duoGrandmaster'],
+            threeSeven: ['noRealm', 'threeSevenRootskips', 'threeSevenExperienced', 'threeSevenMaster', 'threeSevenGrandmaster'],
+            combined: ['rootskips', 'experienced', 'master', 'grandmaster'],
+        }
+
+        const removeHierarchy: RemoveHierarchy = {
+            'threeSevenRootskips': ['noRealm'],
+            'duoExperienced': ['duoRootskips'],
+            'threeSevenExperienced': ['threeSevenRootskips', 'noRealm'],
+            'duoMaster': ['duoExperienced', 'duoRootskips'],
+            'threeSevenMaster': ['threeSevenExperienced', 'threeSevenRootskips', 'noRealm'],
+            'duoGrandmaster': ['duoMaster', 'duoExperienced', 'duoRootskips'],
+            'threeSevenGrandmaster': ['threeSevenMaster', 'threeSevenExperienced', 'threeSevenRootskips', 'noRealm'],
+            'rootskips': ['noRealm'],
+            'experienced': ['noRealm', 'rootskips'],
+            'master': ['noRealm', 'rootskips', 'experienced'],
+            'grandmaster': ['noRealm', 'rootskips', 'experienced', 'master'],
+        }
+
+        const { roles, stripRole, getKeyFromValue, categorize } = this.client.util;
+
+        await interaction.deferReply({ ephemeral: true });
+        if (await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction)) {
+            const messageEmbed = interaction.message.embeds[0];
+            const messageContent = messageEmbed.data.description;
+            const userIdRegex = messageContent?.match(/<@\d*\>/gm);
+            const roleRegex = messageContent?.match(/<@&\d*\>/gm);
+            let dirtySubmitterId;
+            let dirtyReportedUserId;
+            let dirtyRoleId;
+            if (userIdRegex) dirtySubmitterId = userIdRegex[0];
+            if (userIdRegex) dirtyReportedUserId = userIdRegex[1];
+            if (roleRegex) dirtyRoleId = roleRegex[0];
+
+            let embedMessage = '';
+            let reportCount = 0;
+
+            if (dirtySubmitterId && dirtyReportedUserId && dirtyRoleId) {
+                // Initialize reports
+                let removeRole = false
+                const reports = await this.client.database.get('reports');
+                const reportsObject = reports ? reports : {};
+                reportsObject[dirtyReportedUserId] = reportsObject[dirtyReportedUserId] ? reportsObject[dirtyReportedUserId] : {};
+                reportsObject[dirtyReportedUserId][dirtyRoleId] = reportsObject[dirtyReportedUserId][dirtyRoleId] ? reportsObject[dirtyReportedUserId][dirtyRoleId] : [];
+
+                // Add new report
+                reportsObject[dirtyReportedUserId][dirtyRoleId].push({
+                    submitter: dirtySubmitterId,
+                    reportedUser: dirtyReportedUserId
+                })
+
+                removeRole = reportsObject[dirtyReportedUserId][dirtyRoleId].length === 3 ? true : false;
+
+                if (removeRole) {
+                    reportsObject[dirtyReportedUserId][dirtyRoleId] = [];
+                    reportCount = 3;
+                    const roleKey = getKeyFromValue(roles, dirtyRoleId);
+                    const category = categorize(roleKey);
+                    const combinationKey = combinationParent[roleKey] ? combinationParent[roleKey] : '';
+                    const roleId = stripRole(dirtyRoleId);
+                    const combinationRoleId = combinationKey ? stripRole(roles[combinationKey]) : '';
+                    const userId = dirtyReportedUserId.slice(2, -1);
+                    const user = await interaction.guild?.members.fetch(userId);
+                    let userRoles = user?.roles.cache.map(role => role.id) || [];
+                    // Boolean to check for early exit conditions as we can't break out. These conditions are: No role or no combo role.
+                    let handled = false;
+                    // Does not have the role.
+                    if (!userRoles.includes(roleId) && !userRoles.includes(combinationRoleId)) {
+                        handled = true;
+                        embedMessage = `This user does not have this role to remove.`
+                    }
+                    // Has the role, but the role has no combination role
+                    if (userRoles.includes(roleId) && !combinationRoleId && !combinationKey) {
+                        await user?.roles.remove(roleId);
+                        userRoles = userRoles.filter(item => item !== roleId);
+                        handled = true;
+                        embedMessage = `${dirtyRoleId} was removed.\n`
+                    }
+                    // Has the role but no combination role (just in case)
+                    if (userRoles.includes(roleId) && !userRoles.includes(combinationRoleId) && (handled === false)) {
+                        await user?.roles.remove(roleId);
+                        userRoles = userRoles.filter(item => item !== roleId);
+                        // i.e. index of 'grandmaster'
+                        const combinedCategoryIndex = categories.combined.indexOf(combinationKey);
+                        // i.e index of 'master' FROM 'grandmaster'
+                        const newCombinedCategoryIndex: number | null = combinedCategoryIndex !== 0 ? combinedCategoryIndex - 1 : null;
+                        // If user already has the combined role for degradation
+                        if ((newCombinedCategoryIndex !== null) && userRoles.includes(stripRole(roles[categories.combined[newCombinedCategoryIndex]]))) {
+                            // Do nothing. Tags are already removed and combo role for degraded role already exists.
+                            embedMessage = `
+                        ${dirtyRoleId} was removed.
+                        <@${user.id}> already has <@&${roles[categories[category][newCombinedCategoryIndex]]}>.
+                        No degraded role was assigned.
+                        `
+                        } else {
+                            // They don't have the combined role, therefore we have to add degraded role and opposite role.
+                            const reportedCategoryIndex = categories[category].indexOf(roleKey);
+                            const newCategoryIndex: number | null = reportedCategoryIndex !== 0 ? reportedCategoryIndex - 1 : null;
+                            if (newCategoryIndex !== null) {
+                                // i.e. duoMaster
+                                const newRoleKey = categories[category][newCategoryIndex];
+                                let anyAdditionalRole;
+                                if (newRoleKey in prerequisites) {
+                                    // For each key inside a role pre-requisite
+                                    for (const key in prerequisites[newRoleKey]) {
+                                        let assign = true;
+                                        // Loop over each role and check if they have all pre-requisites
+                                        prerequisites[newRoleKey][key].forEach((prereqRole: string) => {
+                                            const roleId = stripRole(roles[prereqRole]);
+                                            if (!(userRoles?.includes(roleId))) {
+                                                assign = false;
+                                            }
+                                        })
+                                        // Assign the additional role and remove the existing pre-requisite roles
+                                        if (assign) {
+                                            const assignedRoleId = stripRole(roles[key]);
+                                            if (!userRoles?.includes(assignedRoleId)) await user?.roles.add(assignedRoleId);
+                                            prerequisites[newRoleKey][key].forEach((prereqRole: string) => {
+                                                const roleId = stripRole(roles[prereqRole]);
+                                                if (userRoles?.includes(roleId)) user?.roles.remove(roleId);
+                                            })
+                                            // Remove inferior roles for combination roles
+                                            if (key in removeHierarchy) {
+                                                for await (const roleToRemove of removeHierarchy[key]) {
+                                                    const removeRoleId = stripRole(roles[roleToRemove]);
+                                                    if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                                                };
+                                            }
+                                            if (newRoleKey in removeHierarchy) {
+                                                for await (const roleToRemove of removeHierarchy[newRoleKey]) {
+                                                    const removeRoleId = stripRole(roles[roleToRemove]);
+                                                    if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                                                };
+                                            }
+                                            anyAdditionalRole = key;
+                                            // Just add the new role as no pre-requisites for the combined role
+                                        } else {
+                                            const roleId = stripRole(roles[newRoleKey]);
+                                            if (!userRoles?.includes(roleId)) user?.roles.add(roleId);
+                                            // Remove inferior roles
+                                            if (newRoleKey in removeHierarchy) {
+                                                for await (const roleToRemove of removeHierarchy[newRoleKey]) {
+                                                    const removeRoleId = stripRole(roles[roleToRemove]);
+                                                    if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                                                };
+                                            }
+                                        }
+                                    }
+                                    // No pre-requisite needed so just assign role
+                                } else {
+                                    const roleId = stripRole(roles[newRoleKey]);
+                                    if (!userRoles?.includes(roleId)) await user?.roles.add(roleId);
+                                    if (newRoleKey in removeHierarchy) {
+                                        for await (const roleToRemove of removeHierarchy[newRoleKey]) {
+                                            const removeRoleId = stripRole(roles[roleToRemove]);
+                                            if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                                        };
+                                    }
+                                }
+                                embedMessage = `${dirtyRoleId} was degraded into ${anyAdditionalRole ? `${roles[anyAdditionalRole]}` : `${roles[newRoleKey]}`}.\n`;
+                            }
+                        }
+                        handled = true;
+                    }
+                    // Has the combination role and the role will need degrading
+                    if (userRoles.includes(combinationRoleId) && (handled === false)) {
+                        const hasHigherRole = (role: string) => {
+                            try {
+                                if (!categorize(role)) return false;
+                                const categorizedHierarchy = categories[categorize(role)];
+                                const sliceFromIndex: number = categorizedHierarchy.indexOf(role) + 1;
+                                const hierarchyList = categorizedHierarchy.slice(sliceFromIndex);
+                                const hierarchyIdList = hierarchyList.map((item: string) => stripRole(roles[item]));
+                                const intersection = hierarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
+                                if (intersection.length === 0) {
+                                    return false
+                                } else {
+                                    return true
+                                };
+                            }
+                            catch (err) { return false }
+                        }
+                        // Remove role
+                        await user?.roles.remove(combinationRoleId);
+                        userRoles = userRoles.filter(item => item !== combinationRoleId);
+                        // Add degraded role (should not have to check)
+                        let degradedRoleAdded = false;
+                        let oppositeRoleAdded = false;
+                        const reportedCategoryIndex = categories[category].indexOf(roleKey);
+                        const newCategoryIndex: number | null = reportedCategoryIndex !== 0 ? reportedCategoryIndex - 1 : null;
+                        if (newCategoryIndex === null) {
+                            embedMessage = `There is no role to degrade to.`
+                        } else if (newCategoryIndex >= 0) {
+                            const degradedRoleKey = categories[category][newCategoryIndex];
+                            const degradedRoleId = stripRole(roles[degradedRoleKey]);
+                            if (!hasHigherRole(degradedRoleKey)) {
+                                await user?.roles.add(degradedRoleId);
+                                degradedRoleAdded = true;
+                            }
+
+                            // Add opposite role (should not have to check)
+                            const oppositeRoleKey = prerequisites[roleKey][combinationKey][0];
+                            const oppositeRoleId = stripRole(roles[oppositeRoleKey]);
+                            if (!hasHigherRole(oppositeRoleKey)) {
+                                await user?.roles.add(oppositeRoleId);
+                                oppositeRoleAdded = true;
+                            }
+                            embedMessage = `
+                        <@&${combinationRoleId}> was removed.
+                        ${degradedRoleAdded ? `<@&${degradedRoleId}> was assigned.` : ''}
+                        ${oppositeRoleAdded ? `<@&${oppositeRoleId}> was also assigned.` : ''}
+                        `
+                        }
+                    }
+                } else {
+                    reportCount = reportsObject[dirtyReportedUserId][dirtyRoleId].length;
+                }
+                await this.client.database.set('reports', reportsObject);
+            }
+
+            const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
+            const newEmbed = new EmbedBuilder()
+                .setTimestamp(oldTimestamp)
+                .setColor(messageEmbed.color)
+                .setDescription(`
+                ${messageContent}
+                ${embedMessage ? embedMessage : ''}${dirtyReportedUserId ? `${dirtyReportedUserId} now has **${reportCount}** report${reportCount !== 1 ? 's' : ''} for ${dirtyRoleId}.\n` : ''} 
+                > Report approved by <@${this.userId}> <t:${this.currentTime}:R>.`);
+            if (messageEmbed.image) newEmbed.setImage(messageEmbed.image.url);
+            await interaction.message.edit({ embeds: [newEmbed], components: [] })
+            const replyEmbed = new EmbedBuilder()
+                .setColor(this.client.util.colours.discord.green)
+                .setDescription('Report successfully applied!');
+            return await interaction.editReply({ embeds: [replyEmbed] });
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Approve Report, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
     }
 
     private async rejectRoleAssign(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
