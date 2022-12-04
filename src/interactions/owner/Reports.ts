@@ -38,25 +38,34 @@ export default class Pass extends BotInteraction {
 
         const reports = await this.getReportsForUser(userResponse);
         let totalReports = 0;
-        Object.keys(reports).forEach(key => {
-            totalReports += reports[key].length;
-        })
-        let embedDescription = '';
-        Object.keys(reports).forEach(key => {
-            if (reports[key].length) {
-                let chunkForKey = `\n${key}: ${reports[key].length}\n`;
-                reports[key].forEach((reportee: any) => {
-                    chunkForKey += `⬥ By ${reportee.submitter} ${reportee.time ? `<t:${reportee.time}:R>.\n` : '\n'}`;
-                })
-                embedDescription += chunkForKey;
-            }
-        })
-        embedDescription += `\n> There are **${totalReports}** total report${totalReports !== 1 ? 's' : ''}.`
+        if (reports) {
+            Object.keys(reports).forEach(key => {
+                totalReports += reports[key].length;
+            })
+            let embedDescription = '';
+            Object.keys(reports).forEach(key => {
+                if (reports[key].length) {
+                    let chunkForKey = `\n${key}: ${reports[key].length}\n`;
+                    reports[key].forEach((reportee: any) => {
+                        chunkForKey += `⬥ By ${reportee.submitter} ${reportee.time ? `<t:${reportee.time}:R>. ${reportee.link ? `[Link](${reportee.link})` : ''}\n` : '\n'}`;
+                    })
+                    embedDescription += chunkForKey;
+                }
+            })
+            embedDescription += `\n> There are **${totalReports}** total report${totalReports !== 1 ? 's' : ''}.`
 
-        const replyEmbed = new EmbedBuilder()
-            .setTitle(`Reports for ${userResponse.tag}`)
-            .setColor(totalReports > 0 ? colours.discord.red : colours.discord.green)
-            .setDescription(totalReports > 0 ? `${embedDescription}` : 'This user has no reports!');
-        await interaction.editReply({ embeds: [replyEmbed] });
+            const replyEmbed = new EmbedBuilder()
+                .setTitle(`Reports for ${userResponse.tag}`)
+                .setColor(totalReports > 0 ? colours.discord.red : colours.discord.green)
+                .setDescription(totalReports > 0 ? `${embedDescription}` : 'This user has no reports!');
+            await interaction.editReply({ embeds: [replyEmbed] });
+        } else {
+            const replyEmbed = new EmbedBuilder()
+                .setTitle(`Reports for ${userResponse.tag}`)
+                .setColor(colours.discord.green)
+                .setDescription('This user has no reports!');
+            await interaction.editReply({ embeds: [replyEmbed] });
+        }
+
     }
 }
