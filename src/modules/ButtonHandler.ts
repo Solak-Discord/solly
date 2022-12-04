@@ -184,7 +184,7 @@ export default class ButtonHandler {
                 // Add new report
                 reportsObject[dirtyReportedUserId][dirtyRoleId].push({
                     submitter: dirtySubmitterId,
-                    reportedUser: dirtyReportedUserId
+                    time: this.currentTime
                 })
 
                 removeRole = reportsObject[dirtyReportedUserId][dirtyRoleId].length === 3 ? true : false;
