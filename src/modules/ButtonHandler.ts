@@ -26,7 +26,17 @@ export default class ButtonHandler {
 
     private async rejectReport(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
         await interaction.deferReply({ ephemeral: true });
-        if (await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction)) {
+        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction);
+        const overrides = await this.client.database.get('overrides');
+        const errorEmbed = new EmbedBuilder()
+            .setTitle('Something went wrong!')
+            .setColor(this.client.util.colours.discord.red)
+            .setDescription('The database was not configured properly.');
+        if (!overrides) return await interaction.editReply({ embeds: [errorEmbed] });
+
+        const overrideUsers = overrides['reports'];
+
+        if (hasRolePermissions || overrideUsers.includes(interaction.user.id.toString())) {
             const messageEmbed = interaction.message.embeds[0];
             const messageContent = messageEmbed.data.description;
             const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
@@ -137,7 +147,18 @@ export default class ButtonHandler {
         const { roles, stripRole, getKeyFromValue, categorize } = this.client.util;
 
         await interaction.deferReply({ ephemeral: true });
-        if (await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction)) {
+
+        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction);
+        const overrides = await this.client.database.get('overrides');
+        const errorEmbed = new EmbedBuilder()
+            .setTitle('Something went wrong!')
+            .setColor(this.client.util.colours.discord.red)
+            .setDescription('The database was not configured properly.');
+        if (!overrides) return await interaction.editReply({ embeds: [errorEmbed] });
+
+        const overrideUsers = overrides['reports'];
+
+        if (hasRolePermissions || overrideUsers.includes(interaction.user.id.toString())) {
             const messageEmbed = interaction.message.embeds[0];
             const messageContent = messageEmbed.data.description;
             const userIdRegex = messageContent?.match(/<@\d*\>/gm);
@@ -389,7 +410,17 @@ export default class ButtonHandler {
 
     private async rejectRoleAssign(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
         await interaction.deferReply({ ephemeral: true });
-        if (await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction)) {
+        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction);
+        const overrides = await this.client.database.get('overrides');
+        const errorEmbed = new EmbedBuilder()
+            .setTitle('Something went wrong!')
+            .setColor(this.client.util.colours.discord.red)
+            .setDescription('The database was not configured properly.');
+        if (!overrides) return await interaction.editReply({ embeds: [errorEmbed] });
+
+        const overrideUsers = overrides['assign'];
+
+        if (hasRolePermissions || overrideUsers.includes(interaction.user.id.toString())) {
             const messageEmbed = interaction.message.embeds[0];
             const messageContent = messageEmbed.data.description;
             const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();

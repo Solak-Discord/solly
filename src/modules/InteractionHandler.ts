@@ -129,15 +129,47 @@ export default class InteractionHandler extends EventEmitter {
                         }
                         break;
                     case 'ELEVATED_ROLE':
-                        if (!(await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction))) {
-                            this.client.logger.log(
-                                {
-                                    message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
-                                    handler: this.constructor.name,
-                                },
-                                true
-                            );
-                            return await interaction.reply({ content: 'You do not have permissions to run this command. This incident has been logged.', ephemeral: true });
+                        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['admin', 'owner'], interaction);
+                        interface KeyMap {
+                            [key: string]: string
+                        }
+                        const keyMap: KeyMap = {
+                            'reports': 'reports'
+                        }
+                        if (command.name in keyMap) {
+                            const overrides = await this.client.database.get('overrides');
+                            if (!overrides) {
+                                this.client.logger.log(
+                                    {
+                                        message: `A database error occurred. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                                        handler: this.constructor.name,
+                                    },
+                                    true
+                                );
+                                return await interaction.reply({ content: 'You do not have permissions to run this command. This incident has been logged.', ephemeral: true });
+                            } else {
+                                if (!(hasRolePermissions || overrides[keyMap[command.name]].includes(interaction.user.id.toString()))) {
+                                    this.client.logger.log(
+                                        {
+                                            message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                                            handler: this.constructor.name,
+                                        },
+                                        true
+                                    );
+                                    return await interaction.reply({ content: 'You do not have permissions to run this command. This incident has been logged.', ephemeral: true });
+                                }
+                            }
+                        } else {
+                            if (!hasRolePermissions) {
+                                this.client.logger.log(
+                                    {
+                                        message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                                        handler: this.constructor.name,
+                                    },
+                                    true
+                                );
+                                return await interaction.reply({ content: 'You do not have permissions to run this command. This incident has been logged.', ephemeral: true });
+                            }
                         }
                         break;
                     case 'TRIAL_TEAM':

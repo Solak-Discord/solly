@@ -42,6 +42,12 @@ export default class Bot extends Client {
 
     async login() {
         await super.login(process.env.TOKEN);
+        const overrides = await this.database.get('overrides');
+        const overridesObject = {
+            reports: ['258055326215962626'],
+            assign: ['258055326215962626']
+        }
+        if (!overrides) await this.database.set('overrides', overridesObject);
         return this.constructor.name;
     }
 
