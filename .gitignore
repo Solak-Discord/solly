@@ -23,5 +23,6 @@ connect.sh
 *config.json
 config.json
 *.ppk
+*.pem
 db.json
 db-backups*
