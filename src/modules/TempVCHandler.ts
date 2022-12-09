@@ -27,9 +27,10 @@ export default class TempChannelManager extends TempChannelsManager {
             childAutoDeleteIfEmpty: true,
             childAutoDeleteIfParentGetsUnregistered: true,
             childAutoDeleteIfOwnerLeaves: false,
-            // childVoiceFormat: (str, count): string => `Team #${count} | ${str}`,
-            childVoiceFormat: (str, count): string => `${str}'s Team`,
-            childVoiceFormatRegex: /^.*\'s\s{1}Team$/,
+            childVoiceFormat: (str, count): string => `Team #${count} | ${str}`,
+            // childVoiceFormat: (str, count): string => `${str}'s Team`,
+            childVoiceFormatRegex: /^Team #\d+ \|/,
+            // childVoiceFormatRegex: /^.*\'s\s{1}Team$/,
             childBitrate: 64000
         })
     }
