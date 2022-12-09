@@ -5,6 +5,7 @@ import InteractionHandler from './modules/InteractionHandler';
 import EventHandler from './modules/EventHandler';
 import UtilityHandler from './modules/UtilityHandler';
 import DatabaseHandler from './modules/DatabaseHandler';
+import TempChannelManager from './modules/TempVCHandler';
 import Keyv = require('keyv');
 
 export default interface Bot extends Client {
@@ -17,6 +18,7 @@ export default interface Bot extends Client {
     interactions: InteractionHandler;
     events: EventHandler;
     database: Keyv<any, Record<string, unknown>>;
+    tempManager: TempChannelManager;
 }
 
 export default class Bot extends Client {
@@ -32,6 +34,7 @@ export default class Bot extends Client {
         this.logger = new BotLogger();
         this.interactions = new InteractionHandler(this).build();
         this.events = new EventHandler(this).build();
+        this.tempManager = new TempChannelManager(this);
 
         process.on('unhandledRejection', (err: any): void => {
             this.logger.error({ message: `UnhandledRejection from Process`, error: err.stack });

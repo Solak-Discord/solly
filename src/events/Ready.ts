@@ -20,6 +20,7 @@ export default class Ready extends BotEvent {
 
     async run(client: Bot) {
         this.client.logger.log({ message: `[${this.client.user?.username}] Ready! Serving ${this.client.guilds.cache.size} guild(s) with ${this.client.users.cache.size} user(s)` }, true);
+        this.client.tempManager.__initParentListener(this.client.util.channels.tempVCCreate);
         this.client.logger.log({ message: `Running on the ${process.env.ENVIRONMENT} environment` }, true);
         this.client.user?.setPresence({
             activities: [{ name: `you kill Solak!`, type: ActivityType.Watching }]

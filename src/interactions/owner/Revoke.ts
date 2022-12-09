@@ -17,7 +17,7 @@ export default class Pass extends BotInteraction {
     get featureOptions() {
         const assignOptions: any = {
             'Reports': 'reports',
-            'Assign': 'assign',
+            'Roles': 'assign',
         }
         const options: any = [];
         Object.keys(assignOptions).forEach((key: string) => {

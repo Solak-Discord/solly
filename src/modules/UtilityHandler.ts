@@ -65,6 +65,9 @@ export default class UtilityHandler {
                 achievementsAndLogs: '1043923759280697405',
                 botRoleLog: '1044636757808922766',
                 reportLog: '1047434337647329330',
+                tempVCCategory: '1043923758781571128',
+                tempVCCreate: '1044828975106641920',
+                dpmCalc: '1043923759280697406',
             }
         }
         return {
@@ -72,6 +75,18 @@ export default class UtilityHandler {
             achievementsAndLogs: '429378540115329044',
             botRoleLog: '1045192967754883172',
             reportLog: '1046699857433342103',
+            tempVCCategory: '429001601089536007',
+            tempVCCreate: '934588464068968479',
+            dpmCalc: '927485855625515039',
+        }
+    }
+
+    get dpm() {
+        return {
+            'initiate': 270,
+            'adept': 330,
+            'mastery': 410,
+            'extreme': 475
         }
     }
 
@@ -113,6 +128,11 @@ export default class UtilityHandler {
                 verifiedLearner: '<@&1043923757707829440>',
                 solakWRHolder: '<@&1043923757732999223>',
                 guardianOfTheGrove: '<@&1043923757691047936>',
+                initiate: '<@&1043923757691047943>',
+                adept: '<@&1043923757691047945>',
+                mastery: '<@&1043923757691047944>',
+                extreme: '<@&1043923757732999222>',
+                moderator: '<@&1050759587898339409>',
             }
         }
         return {
@@ -151,6 +171,11 @@ export default class UtilityHandler {
             verifiedLearner: '<@&935257969552142339>',
             solakWRHolder: '<@&926057875367952394>',
             guardianOfTheGrove: '<@&452531368132345866>',
+            initiate: '<@&927278371862380575>',
+            adept: '<@&927278601735397427>',
+            mastery: '<@&927278888403480668>',
+            extreme: '<@&793847049841279007>',
+            moderator: '<@&1050111253185568788>',
         }
     }
 
@@ -252,5 +277,21 @@ export default class UtilityHandler {
         const GB = Math.floor(bytes / 1024 / 1024 / 1024);
         if (MB >= 1000) return `${GB.toFixed(1)} GB`;
         else return `${Math.round(MB)} MB`;
+    }
+
+    public isValidTime = (timeString: string): boolean => {
+        const pattern = /\d{1,2}:\d{2}(.\d{1})?/gm;
+        return pattern.test(timeString);
+    }
+
+    public isValidDamage = (damageString: string): boolean => {
+        return !isNaN(+damageString);
+    }
+
+    public calcDPMInThousands(damage: string, time: string) {
+        const [minutes, seconds] = time.split(':').map(Number);
+        const secondsAsMinutes = seconds / 60;
+        const totalMinutes = minutes + secondsAsMinutes;
+        return Math.round((+damage) / totalMinutes / 10) / 100;
     }
 }

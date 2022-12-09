@@ -3,6 +3,9 @@ import Bot from '../Bot';
 
 export default interface ButtonHandler { client: Bot; id: string; interaction: ButtonInteraction }
 
+interface RemoveHierarchy {
+    [key: string]: string[];
+}
 export default class ButtonHandler {
     constructor(client: Bot, id: string, interaction: ButtonInteraction<'cached'>) {
         this.client = client;
@@ -12,6 +15,8 @@ export default class ButtonHandler {
             case 'rejectRoleAssign': this.rejectRoleAssign(interaction); break;
             case 'approveReport': this.approveReport(interaction); break;
             case 'rejectReport': this.rejectReport(interaction); break;
+            case 'approveDPM': this.approveDPM(interaction); break;
+            case 'rejectDPM': this.rejectDPM(interaction); break;
             default: break;
         }
     }
@@ -22,6 +27,110 @@ export default class ButtonHandler {
 
     get currentTime(): number {
         return Math.round(Date.now() / 1000)
+    }
+
+    private async rejectDPM(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+
+        const { colours } = this.client.util;
+
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+        if (hasRolePermissions) {
+            const messageEmbed = interaction.message.embeds[0];
+            const messageContent = messageEmbed.data.description;
+            const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
+
+            const newEmbed = new EmbedBuilder()
+                .setTimestamp(oldTimestamp)
+                .setColor(messageEmbed.color)
+                .setDescription(`
+                ${messageContent}\n
+                > Application rejected by <@${this.userId}> <t:${this.currentTime}:R>.`);
+            await interaction.message.edit({ embeds: [newEmbed], components: [] })
+            const replyEmbed = new EmbedBuilder()
+                .setColor(colours.discord.green)
+                .setDescription('Application successfully rejected!');
+            return await interaction.editReply({ embeds: [replyEmbed] });
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Reject DPM Application, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async approveDPM(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+
+        const removeHierarchy: RemoveHierarchy = {
+            'adept': ['initiate'],
+            'mastery': ['initiate', 'adept'],
+            'extreme': ['mastery', 'initiate', 'adept'],
+        }
+
+        const { colours, roles, channels, stripRole, getKeyFromValue } = this.client.util;
+
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+        if (hasRolePermissions) {
+            const messageEmbed = interaction.message.embeds[0];
+            const messageContent = messageEmbed.data.description;
+            const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
+            const userIdRegex = messageContent?.match(/<@\d*\>/gm);
+            const assignedRoles = messageContent?.match(/<@&\d*\>/gm)?.map(unstrippedRole => stripRole(unstrippedRole));
+
+            const errorEmbed = new EmbedBuilder()
+                .setColor(this.client.util.colours.discord.red)
+                .setDescription('Something went wrong with detecting either the role or user.');
+            if (!assignedRoles || !userIdRegex) return await interaction.editReply({ embeds: [errorEmbed] });
+
+            const userId = userIdRegex[0].slice(2, -1);
+            const user = await interaction.guild?.members.fetch(userId);
+            const userRoles = user?.roles.cache.map(role => role.id) || [];
+            await user?.roles.add(assignedRoles[0]);
+
+            // Remove inferior roles
+            const roleKey = getKeyFromValue(roles, `<@&${assignedRoles[0]}>`);
+            if (roleKey in removeHierarchy) {
+                for await (const roleToRemove of removeHierarchy[roleKey]) {
+                    const removeRoleId = stripRole(roles[roleToRemove]);
+                    if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                };
+            }
+
+            const announcementChannel = await this.client.channels.fetch(channels.roleConfirmations) as TextChannel;
+            const embed = new EmbedBuilder()
+                .setAuthor({ name: interaction.user.username, iconURL: interaction.user.avatarURL() || this.client.user?.avatarURL() || 'https://media.discordapp.net/attachments/1027186342620299315/1047598720834875422/618px-Solly_pet_1.png' })
+                .setTimestamp()
+                .setColor(messageEmbed.color || colours.lightblue)
+                .setDescription(`Congratulations to <@${userId}> on achieving <@&${assignedRoles[0]}>!`);
+
+            await announcementChannel.send({ embeds: [embed] });
+
+            const newEmbed = new EmbedBuilder()
+                .setTimestamp(oldTimestamp)
+                .setColor(messageEmbed.color)
+                .setDescription(`
+                ${messageContent}\n
+                > Application approved by <@${this.userId}> <t:${this.currentTime}:R>.`);
+            await interaction.message.edit({ embeds: [newEmbed], components: [] })
+            const replyEmbed = new EmbedBuilder()
+                .setColor(colours.discord.green)
+                .setDescription('Role successfully approved!');
+            return await interaction.editReply({ embeds: [replyEmbed] });
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Approve DPM Application, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
     }
 
     private async rejectReport(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
@@ -80,10 +189,6 @@ export default class ButtonHandler {
 
         interface Prerequisite {
             [key: string]: string[]
-        }
-
-        interface RemoveHierarchy {
-            [key: string]: string[];
         }
 
         const prerequisites: Prerequisites = {
