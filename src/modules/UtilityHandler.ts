@@ -280,7 +280,7 @@ export default class UtilityHandler {
     }
 
     public isValidTime = (timeString: string): boolean => {
-        const pattern = /\d{1,2}:\d{2}(.\d{1})?/gm;
+        const pattern = /^(0?[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9])(\.[0-9])?$/gm;
         return pattern.test(timeString);
     }
 
