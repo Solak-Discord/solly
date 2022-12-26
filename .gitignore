@@ -26,3 +26,4 @@ config.json
 *.pem
 db.json
 db-backups*
+*.sqlite
