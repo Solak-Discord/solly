@@ -137,27 +137,16 @@ export default class InteractionHandler extends EventEmitter {
                             'reports': 'reports'
                         }
                         if (command.name in keyMap) {
-                            const overrides = await this.client.database.get('overrides');
-                            if (!overrides) {
+                            const overridePermissions = await this.client.util.hasOverridePermissions(interaction, keyMap[command.name]);
+                            if (!(hasRolePermissions || overridePermissions)) {
                                 this.client.logger.log(
                                     {
-                                        message: `A database error occurred. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                                        message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
                                         handler: this.constructor.name,
                                     },
                                     true
                                 );
                                 return await interaction.reply({ content: 'You do not have permissions to run this command. This incident has been logged.', ephemeral: true });
-                            } else {
-                                if (!(hasRolePermissions || overrides[keyMap[command.name]].includes(interaction.user.id.toString()))) {
-                                    this.client.logger.log(
-                                        {
-                                            message: `Attempted restricted permissions. { command: ${command.name}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
-                                            handler: this.constructor.name,
-                                        },
-                                        true
-                                    );
-                                    return await interaction.reply({ content: 'You do not have permissions to run this command. This incident has been logged.', ephemeral: true });
-                                }
                             }
                         } else {
                             if (!hasRolePermissions) {

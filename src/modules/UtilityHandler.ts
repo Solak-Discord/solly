@@ -1,6 +1,7 @@
 import * as config from '../../config.json';
 import { EmbedBuilder, ChatInputCommandInteraction, Interaction } from 'discord.js';
 import Bot from '../Bot';
+import { Override } from '../entity/Override';
 
 export default interface UtilityHandler {
     client: Bot;
@@ -237,6 +238,21 @@ export default class UtilityHandler {
         const userRoles = user.roles.cache.map((role) => role.id);
         const intersection = validRoleIds.filter((roleId) => userRoles.includes(roleId));
         return intersection.length > 0;
+    }
+
+    public hasOverridePermissions = async (interaction: Interaction, feature: string) => {
+        if (!interaction.inCachedGuild()) return;
+        const { dataSource } = this.client;
+        const repository = dataSource.getRepository(Override);
+
+        const existingPermissions = await repository.findOne({
+            where: {
+                user: interaction.user.id,
+                feature: feature
+            }
+        })
+
+        return existingPermissions ? true : false;
     }
 
     public deleteMessage(interaction: ChatInputCommandInteraction<any>, id: string) {

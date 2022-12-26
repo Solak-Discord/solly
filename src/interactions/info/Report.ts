@@ -1,5 +1,6 @@
 import BotInteraction from '../../types/BotInteraction';
 import { ActionRowBuilder, Attachment, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, Role, SlashCommandBuilder, TextChannel, User } from 'discord.js';
+import { Report } from "../../entity/Report"
 
 interface CombinationParent {
     [roleKey: string]: string;
@@ -93,8 +94,15 @@ export default class Say extends BotInteraction {
         if (hasRoleOrCombinationRole()) {
             const getReportsForRole = async () => {
                 try {
-                    const reports = await this.client.database.get('reports');
-                    return reports[`<@${userResponse.id}>`][roles[role]].length;
+                    const reportRepository = this.client.dataSource.getRepository(Report);
+                    const [_dbReports, reportsCount] = await reportRepository.findAndCount({
+                        where: { 
+                            reportedUser: `<@${userResponse.id}>`,
+                            role: roles[role],
+                            expired: false
+                        } 
+                    })
+                    return reportsCount;
                 } catch {
                     return 0;
                 }

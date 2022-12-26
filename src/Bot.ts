@@ -4,12 +4,13 @@ import BotLogger from './modules/LoggingHandler';
 import InteractionHandler from './modules/InteractionHandler';
 import EventHandler from './modules/EventHandler';
 import UtilityHandler from './modules/UtilityHandler';
-import DatabaseHandler from './modules/DatabaseHandler';
 import TempChannelManager from './modules/TempVCHandler';
-import Keyv = require('keyv');
+import { DataSource } from "typeorm"
+import { AppDataSource } from './DataSource';
 
 export default interface Bot extends Client {
     color: number;
+    dataSource: DataSource;
     commandsRun: number;
     util: UtilityHandler;
     quitting?: boolean;
@@ -17,7 +18,6 @@ export default interface Bot extends Client {
     logger: BotLogger;
     interactions: InteractionHandler;
     events: EventHandler;
-    database: Keyv<any, Record<string, unknown>>;
     tempManager: TempChannelManager;
 }
 
@@ -25,8 +25,15 @@ export default class Bot extends Client {
     constructor(options: ClientOptions) {
         super(options);
 
+        AppDataSource.initialize().then(() => {
+            console.log("Data Source has been initialized!")
+        })
+        .catch((err) => {
+            console.error("Error during Data Source initialization", err)
+        });
+        
         this.color = 0x7e686c;
-        this.database = new DatabaseHandler(this, 'db.json');
+        this.dataSource = AppDataSource;
         this.commandsRun = 0;
         this.util = new UtilityHandler(this);
         this.quitting = false;
@@ -45,12 +52,6 @@ export default class Bot extends Client {
 
     async login() {
         await super.login(process.env.TOKEN);
-        const overrides = await this.database.get('overrides');
-        const overridesObject = {
-            reports: ['258055326215962626'],
-            assign: ['258055326215962626']
-        }
-        if (!overrides) await this.database.set('overrides', overridesObject);
         return this.constructor.name;
     }
 
