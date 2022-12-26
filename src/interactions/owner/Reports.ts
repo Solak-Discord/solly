@@ -1,5 +1,10 @@
 import BotInteraction from '../../types/BotInteraction';
 import { ChatInputCommandInteraction, SlashCommandBuilder, User, EmbedBuilder } from 'discord.js';
+import { Report } from '../../entity/Report';
+
+interface StructuredReports {
+    [key: string]: Report[];
+}
 
 export default class Pass extends BotInteraction {
     get name() {
@@ -13,14 +18,26 @@ export default class Pass extends BotInteraction {
     get permissions() {
         return 'ELEVATED_ROLE';
     }
+    
 
     public getReportsForUser = async (user: User) => {
-        try {
-            const reports = await this.client.database.get('reports');
-            return reports[`<@${user.id}>`];
-        } catch {
-            return 0;
-        }
+        const { dataSource } = this.client;
+        const repository = dataSource.getRepository(Report);
+        const reports = await repository.find({
+            where: { 
+                reportedUser: `<@${user.id}>`,
+                expired: false
+            } 
+        });
+        const structuredReports: StructuredReports = {};
+        reports.forEach((report: Report) => {
+            if (report.role in structuredReports) {
+                structuredReports[report.role].push(report);
+            } else {
+                structuredReports[report.role] = [report];
+            }
+        })
+        return structuredReports;
     }
 
     get slashData() {
@@ -47,12 +64,12 @@ export default class Pass extends BotInteraction {
                 if (reports[key].length) {
                     let chunkForKey = `\n${key}: ${reports[key].length}\n`;
                     reports[key].forEach((reportee: any) => {
-                        chunkForKey += `⬥ By ${reportee.submitter} ${reportee.time ? `<t:${reportee.time}:R>. ${reportee.link ? `[Link](${reportee.link})` : ''}\n` : '\n'}`;
+                        chunkForKey += `⬥ By ${reportee.reporter} ${reportee.createdAt ? `<t:${Math.round(reportee.createdAt / 1000)}:R>. ${reportee.link ? `[Link](${reportee.link})` : ''}\n` : '\n'}`;
                     })
                     embedDescription += chunkForKey;
                 }
             })
-            embedDescription += `\n> There are **${totalReports}** total report${totalReports !== 1 ? 's' : ''}.`
+            embedDescription += `\n> There ${totalReports !== 1 ? 'are' : 'is'} **${totalReports}** total report${totalReports !== 1 ? 's' : ''}.`
 
             const replyEmbed = new EmbedBuilder()
                 .setTitle(`Reports for ${userResponse.tag}`)

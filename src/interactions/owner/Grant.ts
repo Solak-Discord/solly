@@ -1,4 +1,5 @@
 import BotInteraction from '../../types/BotInteraction';
+import { Override } from '../../entity/Override';
 import { ChatInputCommandInteraction, SlashCommandBuilder, EmbedBuilder, User } from 'discord.js';
 
 export default class Pass extends BotInteraction {
@@ -41,31 +42,30 @@ export default class Pass extends BotInteraction {
         const feature: string = interaction.options.getString('feature', true);
         const user: User = interaction.options.getUser('user', true);
 
+        const { dataSource } = this.client;
+        const repository = dataSource.getRepository(Override);
+
         const { colours } = this.client.util;
 
-        const overrides = await this.client.database.get('overrides');
-
-        const errorEmbed = new EmbedBuilder()
-            .setTitle('Something went wrong!')
-            .setColor(colours.discord.red)
-            .setDescription('The database was not configured properly.');
-        if (!overrides) return await interaction.editReply({ embeds: [errorEmbed] });
-
-        if (!overrides[feature]) {
-            overrides[feature] = [user.id.toString()]
-        } else {
-            if (!overrides[feature].includes(user.id.toString())) {
-                overrides[feature].push(user.id.toString())
-            } else {
-                const replyEmbed = new EmbedBuilder()
-                    .setTitle('Something went wrong!')
-                    .setColor(colours.discord.red)
-                    .setDescription(`<@${user.id}> already has permission to use the **${feature}** feature.`);
-                return await interaction.editReply({ embeds: [replyEmbed] });
+        const existingPermissions = await repository.findOne({
+            where: {
+                user: user.id,
+                feature: feature
             }
-        }
+        })
 
-        await this.client.database.set('overrides', overrides);
+        if (!existingPermissions) {
+            const override = new Override();
+            override.user = user.id;
+            override.feature = feature;
+            await repository.save(override);
+        } else {
+            const replyEmbed = new EmbedBuilder()
+                .setTitle('Something went wrong!')
+                .setColor(colours.discord.red)
+                .setDescription(`<@${user.id}> already has permission to use the **${feature}** feature.`);
+            return await interaction.editReply({ embeds: [replyEmbed] });
+        }
 
         const replyEmbed = new EmbedBuilder()
             .setTitle('Permissions successfully granted!')
