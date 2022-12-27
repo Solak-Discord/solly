@@ -19,6 +19,10 @@ interface Roles {
     [roleName: string]: string;
 }
 
+interface Emojis {
+    [emojiName: string]: string;
+}
+
 interface Categories {
     killCount: string[]
     collectionLog: string[]
@@ -56,6 +60,14 @@ export default class UtilityHandler {
                 green: 5763719,
                 red: 15548997
             }
+        }
+    }
+
+    get emojis(): Emojis {
+        return {
+            gem1: '<:gem1:1057231061375008799>',
+            gem2: '<:gem2:1057231076239605770>',
+            gem3: '<:gem3:1057231089854324736>',
         }
     }
 
@@ -312,7 +324,7 @@ export default class UtilityHandler {
         const totalMinutes = minutes + secondsAsMinutes;
         return Math.round((+damage) / totalMinutes / 10) / 100;
     }
-    
+
     public checkForUserId = (userId: string, objects: APIEmbedField[]): { obj: APIEmbedField, index: number } | undefined => {
         for (let i = 0; i < objects.length; i++) {
             if (objects[i].value === userId) {
