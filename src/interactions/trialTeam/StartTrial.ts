@@ -278,7 +278,7 @@ export default class Pass extends BotInteraction {
 
         const channel = await this.client.channels.fetch(channels.trialScheduling) as TextChannel;
         await channel.send(
-            { content: `${roles['trialTeam']}`, embeds: [duoEmbed], components: [info.teamSize === 'Duo' ? duoButtonRow : groupButtonRow, controlPanel] }
+            { embeds: [duoEmbed], components: [info.teamSize === 'Duo' ? duoButtonRow : groupButtonRow, controlPanel] }
         )
 
         const replyEmbed = new EmbedBuilder()
