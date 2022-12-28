@@ -530,7 +530,7 @@ export default class ButtonHandler {
     }
 
     private async startTrial(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
-        const { colours, isTeamFull } = this.client.util;
+        const { colours } = this.client.util; // Add isTeamFull if team full is required again.
         await interaction.deferReply({ ephemeral: true });
         const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
         const messageEmbed: Embed = interaction.message.embeds[0];
@@ -551,33 +551,33 @@ export default class ButtonHandler {
         }
         if (hasRolePermissions) {
             if (interaction.user.id === userId) {
-                if (isTeamFull(fields)) {
-                    const trialStarted = `> **Moderation**\n\n ⬥ Trial started <t:${this.currentTime}:R>.\n\n> **Team**`;
-                    const newMessageContent = messageContent?.replace('> **Team**', trialStarted);
-                    const newEmbed = new EmbedBuilder()
-                        .setColor(messageEmbed.color)
-                        .setFields(fields)
-                        .setDescription(`${newMessageContent}`);
-                    const controlPanel = new ActionRowBuilder<ButtonBuilder>()
-                        .addComponents(
-                            new ButtonBuilder()
-                                .setCustomId('passTrialee')
-                                .setLabel('Pass')
-                                .setStyle(ButtonStyle.Success),
-                            new ButtonBuilder()
-                                .setCustomId('failTrialee')
-                                .setLabel('Fail')
-                                .setStyle(ButtonStyle.Danger)
-                        );
-                    await interaction.message.edit({ content: '', embeds: [newEmbed], components: [controlPanel] });
-                    replyEmbed.setColor(colours.discord.green);
-                    replyEmbed.setDescription(`Trial successfully started!`);
-                    return await interaction.editReply({ embeds: [replyEmbed] });
-                } else {
-                    replyEmbed.setColor(colours.discord.red)
-                    replyEmbed.setDescription(`The team is not full yet.`)
-                    return await interaction.editReply({ embeds: [replyEmbed] });
-                }
+                // if (isTeamFull(fields)) {
+                const trialStarted = `> **Moderation**\n\n ⬥ Trial started <t:${this.currentTime}:R>.\n\n> **Team**`;
+                const newMessageContent = messageContent?.replace('> **Team**', trialStarted);
+                const newEmbed = new EmbedBuilder()
+                    .setColor(messageEmbed.color)
+                    .setFields(fields)
+                    .setDescription(`${newMessageContent}`);
+                const controlPanel = new ActionRowBuilder<ButtonBuilder>()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('passTrialee')
+                            .setLabel('Pass')
+                            .setStyle(ButtonStyle.Success),
+                        new ButtonBuilder()
+                            .setCustomId('failTrialee')
+                            .setLabel('Fail')
+                            .setStyle(ButtonStyle.Danger)
+                    );
+                await interaction.message.edit({ content: '', embeds: [newEmbed], components: [controlPanel] });
+                replyEmbed.setColor(colours.discord.green);
+                replyEmbed.setDescription(`Trial successfully started!`);
+                return await interaction.editReply({ embeds: [replyEmbed] });
+                // } else {
+                //     replyEmbed.setColor(colours.discord.red)
+                //     replyEmbed.setDescription(`The team is not full yet.`)
+                //     return await interaction.editReply({ embeds: [replyEmbed] });
+                // }
             } else {
                 replyEmbed.setColor(colours.discord.red)
                 replyEmbed.setDescription(`Only <@${userId}> can start this trial.`)
