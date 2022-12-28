@@ -1,5 +1,5 @@
 import * as config from '../../config.json';
-import { EmbedBuilder, ChatInputCommandInteraction, Interaction } from 'discord.js';
+import { EmbedBuilder, ChatInputCommandInteraction, Interaction, APIEmbedField } from 'discord.js';
 import Bot from '../Bot';
 import { Override } from '../entity/Override';
 
@@ -17,6 +17,10 @@ interface Channels {
 
 interface Roles {
     [roleName: string]: string;
+}
+
+interface Emojis {
+    [emojiName: string]: string;
 }
 
 interface Categories {
@@ -59,6 +63,14 @@ export default class UtilityHandler {
         }
     }
 
+    get emojis(): Emojis {
+        return {
+            gem1: '<:gem1:1057231061375008799>',
+            gem2: '<:gem2:1057231076239605770>',
+            gem3: '<:gem3:1057231089854324736>',
+        }
+    }
+
     get channels(): Channels {
         if (process.env.ENVIRONMENT === 'DEVELOPMENT') {
             return {
@@ -69,6 +81,7 @@ export default class UtilityHandler {
                 tempVCCategory: '1043923758781571128',
                 tempVCCreate: '1044828975106641920',
                 dpmCalc: '1043923759280697406',
+                trialScheduling: '1051512803485286481',
             }
         }
         return {
@@ -79,6 +92,7 @@ export default class UtilityHandler {
             tempVCCategory: '429001601089536007',
             tempVCCreate: '934588464068968479',
             dpmCalc: '927485855625515039',
+            trialScheduling: '1050019465993142412',
         }
     }
 
@@ -309,5 +323,32 @@ export default class UtilityHandler {
         const secondsAsMinutes = seconds / 60;
         const totalMinutes = minutes + secondsAsMinutes;
         return Math.round((+damage) / totalMinutes / 10) / 100;
+    }
+
+    public checkForUserId = (userId: string, objects: APIEmbedField[]): { obj: APIEmbedField, index: number } | undefined => {
+        for (let i = 0; i < objects.length; i++) {
+            if (objects[i].value === userId) {
+                return { obj: objects[i], index: i };
+            }
+        }
+        return undefined;
+    };
+
+    public getEmptyObject(targetName: string, objects: APIEmbedField[]): { obj: APIEmbedField, index: number } | undefined {
+        const index = objects.findIndex(obj => obj.name === targetName && obj.value === '`Empty`');
+        if (index >= 0) {
+            const obj = objects[index];
+            return { obj: obj, index: index };
+        }
+        return undefined;
+    }
+
+    public isTeamFull(players: APIEmbedField[]): boolean {
+        for (const player of players) {
+            if (player.value === '`Empty`') {
+                return false;
+            }
+        }
+        return true;
     }
 }

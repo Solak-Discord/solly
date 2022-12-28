@@ -134,7 +134,8 @@ export default class InteractionHandler extends EventEmitter {
                             [key: string]: string
                         }
                         const keyMap: KeyMap = {
-                            'reports': 'reports'
+                            'reports': 'reports',
+                            'upkeep': 'trials'
                         }
                         if (command.name in keyMap) {
                             const overridePermissions = await this.client.util.hasOverridePermissions(interaction, keyMap[command.name]);

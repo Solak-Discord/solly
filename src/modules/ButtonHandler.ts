@@ -1,5 +1,7 @@
-import { ButtonInteraction, EmbedBuilder, GuildMember, InteractionResponse, Message, TextChannel } from 'discord.js';
+import { ActionRowBuilder, APIEmbedField, ButtonBuilder, ButtonInteraction, ButtonStyle, Embed, EmbedBuilder, GuildMember, InteractionResponse, Message, TextChannel } from 'discord.js';
 import { Report } from '../entity/Report';
+import { Trial } from '../entity/Trial';
+import { TrialParticipation } from '../entity/TrialParticipation';
 import Bot from '../Bot';
 
 export default interface ButtonHandler { client: Bot; id: string; interaction: ButtonInteraction }
@@ -7,6 +9,19 @@ export default interface ButtonHandler { client: Bot; id: string; interaction: B
 interface RemoveHierarchy {
     [key: string]: string[];
 }
+
+interface Hierarchy {
+    [key: string]: string[];
+}
+
+interface Prerequisites {
+    [prerequisite: string]: Prerequisite
+}
+
+interface Prerequisite {
+    [key: string]: string[]
+}
+
 export default class ButtonHandler {
     constructor(client: Bot, id: string, interaction: ButtonInteraction<'cached'>) {
         this.client = client;
@@ -18,6 +33,16 @@ export default class ButtonHandler {
             case 'rejectReport': this.rejectReport(interaction); break;
             case 'approveDPM': this.approveDPM(interaction); break;
             case 'rejectDPM': this.rejectDPM(interaction); break;
+            case 'selectBase': this.selectBase(interaction); break;
+            case 'selectDPS': this.selectDPS(interaction); break;
+            case 'selectOutside': this.selectOutside(interaction); break;
+            case 'selectElf': this.selectElf(interaction); break;
+            case 'disbandTrial': this.disbandTrial(interaction); break;
+            case 'startTrial': this.startTrial(interaction); break;
+            case 'passTrialee': this.passTrialee(interaction); break;
+            case 'failTrialee': this.failTrialee(interaction); break;
+            case 'nextUpkeep': this.nextUpkeep(interaction); break;
+            case 'prevUpkeep': this.prevUpkeep(interaction); break;
             default: break;
         }
     }
@@ -29,6 +54,688 @@ export default class ButtonHandler {
     get currentTime(): number {
         return Math.round(Date.now() / 1000)
     }
+
+    public getUpkeepMembers = async (pastDate: Date, interaction: ButtonInteraction<'cached'>) => {
+        const { dataSource } = this.client;
+        const { roles, stripRole } = this.client.util;
+        // Get all trials since pastDate but only grab the first 10
+        const trialsParticipated = await dataSource.createQueryBuilder()
+            .select('trialParticipation.participant', 'user')
+            .addSelect('COUNT(*)', 'count')
+            .from(TrialParticipation, 'trialParticipation')
+            .where('trialParticipation.createdAt > :pastDate', { pastDate })
+            .groupBy('trialParticipation.participant')
+            .orderBy('count', 'DESC')
+            .getRawMany();
+
+        // Process result into a key value pair
+        const participation: any = {}
+        trialsParticipated.forEach(trial => {
+            participation[trial.user] = trial.count;
+        })
+
+        const trialTeamMembers = await interaction.guild?.members.fetch().then(members => {
+            return members.filter(member => member.roles.cache.has(stripRole(roles.trialTeam))).map(member => member.id)
+        });
+
+        const sortableArray: any = [];
+        trialTeamMembers?.forEach(userId => {
+            if (participation[userId]) {
+                sortableArray.push([userId, participation[userId]]);
+            } else {
+                sortableArray.push([userId, 0]);
+            }
+        });
+        sortableArray.sort((a: any, b: any) => b[1] - a[1]);
+        return sortableArray;
+    }
+
+    public createUpkeepString = (members: any) => {
+        let fieldString = '';
+        members.slice(0, 10).forEach((member: any) => {
+            fieldString += `⬥ <@${member[0]}> - **${member[1]}**\n`
+        })
+        return fieldString;
+    }
+
+    private async nextUpkeep(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await interaction.deferReply({ ephemeral: true });
+        const { colours, hasRolePermissions, hasOverridePermissions } = this.client.util;
+        const rolePermissions = await hasRolePermissions(this.client, ['admin', 'owner'], interaction);
+        const overridePermissions = await hasOverridePermissions(interaction, 'trials');
+
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const footer = messageEmbed.footer;
+        const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
+        const timeExpression: RegExp = /<t:(\d+):D>/;
+        const pageExpression: RegExp = /Page (\d+) of (\d+)/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let timeInSeconds: number = 0;
+        let pageNumber: number = 0;
+        let totalPages: number = 0;
+        if (messageContent) {
+            const timeMatches = messageContent.match(timeExpression);
+            const pageMatches = footer?.text.match(pageExpression);
+            timeInSeconds = timeMatches ? Number(timeMatches[1]) : 0;
+            pageNumber = pageMatches ? Number(pageMatches[1]) : 0;
+            totalPages = pageMatches ? Number(pageMatches[2]) : 0;
+            if (!timeInSeconds || !pageNumber || !totalPages) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Time or page numbers could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (rolePermissions || overridePermissions) {
+            const general = messageContent?.split('⬥')[0];
+            const dateObject = new Date(timeInSeconds * 1000);
+            const nextPage = pageNumber + 1;
+
+            const upkeepData = await this.getUpkeepMembers(dateObject, interaction);
+            const upkeepMembers = upkeepData.slice(pageNumber * 10, nextPage * 10);
+
+            const middleNav = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('prevUpkeep')
+                        .setLabel('Previous')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('nextUpkeep')
+                        .setLabel('Next')
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+            const endNav = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('prevUpkeep')
+                        .setLabel('Previous')
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+            const navigation = nextPage === totalPages ? endNav : middleNav;
+            const newEmbed = new EmbedBuilder()
+                .setTimestamp(oldTimestamp)
+                .setTitle('Trial Team Upkeep')
+                .setColor(messageEmbed.color)
+                .setFooter({ text: `Page ${nextPage} of ${totalPages}` })
+                .setDescription(`${general}${this.createUpkeepString(upkeepMembers)}`)
+            await interaction.message.edit({ content: '', embeds: [newEmbed], components: [navigation] });
+
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Pass Trialee, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async prevUpkeep(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await interaction.deferReply({ ephemeral: true });
+        const { colours, hasRolePermissions, hasOverridePermissions } = this.client.util;
+        const rolePermissions = await hasRolePermissions(this.client, ['admin', 'owner'], interaction);
+        const overridePermissions = await hasOverridePermissions(interaction, 'trials');
+
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const footer = messageEmbed.footer;
+        const oldTimestamp = messageEmbed.timestamp ? new Date(messageEmbed.timestamp) : new Date();
+        const timeExpression: RegExp = /<t:(\d+):D>/;
+        const pageExpression: RegExp = /Page (\d+) of (\d+)/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let timeInSeconds: number = 0;
+        let pageNumber: number = 0;
+        let totalPages: number = 0;
+        if (messageContent) {
+            const timeMatches = messageContent.match(timeExpression);
+            const pageMatches = footer?.text.match(pageExpression);
+            timeInSeconds = timeMatches ? Number(timeMatches[1]) : 0;
+            pageNumber = pageMatches ? Number(pageMatches[1]) : 0;
+            totalPages = pageMatches ? Number(pageMatches[2]) : 0;
+            if (!timeInSeconds || !pageNumber || !totalPages) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Time or page numbers could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (rolePermissions || overridePermissions) {
+            const general = messageContent?.split('⬥')[0];
+
+            const dateObject = new Date(timeInSeconds * 1000);
+            const nextPage = pageNumber - 1;
+
+            const upkeepData = await this.getUpkeepMembers(dateObject, interaction);
+            const upkeepMembers = upkeepData.slice((nextPage - 1) * 10, nextPage * 10);
+
+            const middleNav = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('prevUpkeep')
+                        .setLabel('Previous')
+                        .setStyle(ButtonStyle.Secondary),
+                    new ButtonBuilder()
+                        .setCustomId('nextUpkeep')
+                        .setLabel('Next')
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+            const endNav = new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('nextUpkeep')
+                        .setLabel('Next')
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+            const navigation = nextPage === 1 ? endNav : middleNav;
+            const newEmbed = new EmbedBuilder()
+                .setTimestamp(oldTimestamp)
+                .setTitle('Trial Team Upkeep')
+                .setColor(messageEmbed.color)
+                .setFooter({ text: `Page ${nextPage} of ${totalPages}` })
+                .setDescription(`${general}${this.createUpkeepString(upkeepMembers)}`)
+            await interaction.message.edit({ content: '', embeds: [newEmbed], components: [navigation] });
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Pass Trialee, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    public async assignMatchmakingRole(interaction: ButtonInteraction<'cached'>, cleanRoleId: string, trialeeId: string) {
+
+        const { roles, stripRole, categorize, getKeyFromValue } = this.client.util;
+
+        const hierarchy: Hierarchy = {
+            threeSeven: ['noRealm', 'threeSevenRootskips', 'rootskips', 'threeSevenExperienced', 'experienced', 'threeSevenMaster', 'master', 'threeSevenGrandmaster', 'grandmaster'],
+            duo: ['duoRootskips', 'rootskips', 'duoExperienced', 'experienced', 'duoMaster', 'master', 'duoGrandmaster', 'grandmaster'],
+            combined: ['rootskips', 'experienced', 'master', 'grandmaster'],
+        }
+
+        const removeHierarchy: RemoveHierarchy = {
+            'threeSevenRootskips': ['noRealm'],
+            'duoExperienced': ['duoRootskips'],
+            'threeSevenExperienced': ['threeSevenRootskips', 'noRealm'],
+            'duoMaster': ['duoExperienced', 'duoRootskips'],
+            'threeSevenMaster': ['threeSevenExperienced', 'threeSevenRootskips', 'noRealm'],
+            'duoGrandmaster': ['duoMaster', 'duoExperienced', 'duoRootskips'],
+            'threeSevenGrandmaster': ['threeSevenMaster', 'threeSevenExperienced', 'threeSevenRootskips', 'noRealm'],
+            'rootskips': ['noRealm'],
+            'experienced': ['noRealm', 'rootskips'],
+            'master': ['noRealm', 'rootskips', 'experienced'],
+            'grandmaster': ['noRealm', 'rootskips', 'experienced', 'master'],
+        }
+
+        const prerequisites: Prerequisites = {
+            'duoRootskips': {
+                'rootskips': ['threeSevenRootskips']
+            },
+            'threeSevenRootskips': {
+                'rootskips': ['duoRootskips']
+            },
+            'duoExperienced': {
+                'experienced': ['threeSevenExperienced']
+            },
+            'threeSevenExperienced': {
+                'experienced': ['duoExperienced']
+            },
+            'duoMaster': {
+                'master': ['threeSevenMaster']
+            },
+            'threeSevenMaster': {
+                'master': ['duoMaster']
+            },
+            'duoGrandmaster': {
+                'grandmaster': ['threeSevenGrandmaster']
+            },
+            'threeSevenGrandmaster': {
+                'grandmaster': ['duoGrandmaster']
+            }
+        }
+
+        const hasHigherRole = (role: string) => {
+            try {
+                if (!categorize(role)) return false;
+                const categorizedHierarchy = hierarchy[categorize(role)];
+                const sliceFromIndex: number = categorizedHierarchy.indexOf(role) + 1;
+                const hierarchyList = categorizedHierarchy.slice(sliceFromIndex);
+                const hierarchyIdList = hierarchyList.map((item: string) => stripRole(roles[item]));
+                const intersection = hierarchyIdList.filter((roleId: string) => userRoles.includes(roleId));
+                if (intersection.length === 0) {
+                    return false
+                } else {
+                    return true
+                };
+            }
+            catch (err) { return false }
+        }
+
+        const role = getKeyFromValue(roles, `<@&${cleanRoleId}>`);
+        const user = await interaction.guild?.members.fetch(trialeeId);
+        const userRoles = user?.roles.cache.map(role => role.id) || [];
+
+        // Check for pre-requisite
+        if (role in prerequisites) {
+            // For each key inside a role pre-requisite
+            for (const key in prerequisites[role]) {
+                // Break out if they have the role already or if they have any higher role
+                if (userRoles?.includes(stripRole(roles[key])) && hasHigherRole(role)) {
+                    break;
+                };
+                let assign = true;
+                // Loop over each role and check if they have all pre-requisites
+                prerequisites[role][key].forEach((prereqRole: string) => {
+                    const roleId = stripRole(roles[prereqRole]);
+                    if (!(userRoles?.includes(roleId))) {
+                        assign = false;
+                    }
+                })
+                // Assign the additional role and remove the existing pre-requisite roles
+                if (assign) {
+                    const assignedRoleId = stripRole(roles[key]);
+                    if (!hasHigherRole(role) && !userRoles?.includes(assignedRoleId)) await user?.roles.add(assignedRoleId);
+                    prerequisites[role][key].forEach((prereqRole: string) => {
+                        const roleId = stripRole(roles[prereqRole]);
+                        if (userRoles?.includes(roleId)) user?.roles.remove(roleId);
+                    })
+                    // Remove inferior roles for combination roles
+                    if ((key in removeHierarchy) && !hasHigherRole(role)) {
+                        for await (const roleToRemove of removeHierarchy[key]) {
+                            const removeRoleId = stripRole(roles[roleToRemove]);
+                            if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                        };
+                    }
+                    if ((role in removeHierarchy) && !hasHigherRole(role)) {
+                        for await (const roleToRemove of removeHierarchy[role]) {
+                            const removeRoleId = stripRole(roles[roleToRemove]);
+                            if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                        };
+                    }
+                    // Just add the new role as no pre-requisites for the combined role
+                } else {
+                    const roleId = stripRole(roles[role]);
+                    if (!hasHigherRole(role) && !userRoles?.includes(roleId)) user?.roles.add(roleId);
+                    // Remove inferior roles
+                    if ((role in removeHierarchy) && !hasHigherRole(role)) {
+                        for await (const roleToRemove of removeHierarchy[role]) {
+                            const removeRoleId = stripRole(roles[roleToRemove]);
+                            if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                        };
+                    }
+                }
+            }
+            // No pre-requisite needed so just assign role
+        } else {
+            const roleId = stripRole(roles[role]);
+            if (!hasHigherRole(role) && !userRoles?.includes(roleId)) await user?.roles.add(roleId);
+            if (role in removeHierarchy) {
+                for await (const roleToRemove of removeHierarchy[role]) {
+                    const removeRoleId = stripRole(roles[roleToRemove]);
+                    if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
+                };
+            }
+        }
+    }
+
+    public async saveTrial(interaction: ButtonInteraction<'cached'>, trialeeId: string, roleId: string, userId: string, fields: APIEmbedField[]): Promise<void> {
+        // Create new Trial.
+        const { dataSource } = this.client;
+        const trialRepository = dataSource.getRepository(Trial);
+        const trialObject = new Trial();
+        trialObject.trialee = trialeeId;
+        trialObject.host = userId;
+        trialObject.role = roleId;
+        trialObject.link = interaction.message.url;
+        const trial = await trialRepository.save(trialObject);
+
+        // Update Trial Attendees
+
+        const trialParticipants: TrialParticipation[] = [];
+        fields.forEach((member: APIEmbedField) => {
+            if (member.value !== '`Empty`' && !member.value.includes('Trialee')) {
+                const participant = new TrialParticipation();
+                participant.participant = member.value.slice(2, -1);
+                participant.role = member.name;
+                participant.trial = trial;
+                trialParticipants.push(participant);
+            }
+        })
+
+        // Save trial attendees
+
+        const participantReposittory = dataSource.getRepository(TrialParticipation);
+        await participantReposittory.save(trialParticipants);
+    }
+
+    public async handleRoleSelection(interaction: ButtonInteraction<'cached'>, roleString: string): Promise<Message<true> | InteractionResponse<true> | void> {
+
+        const { colours, checkForUserId, getEmptyObject } = this.client.util;
+
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
+        if (hasRolePermissions) {
+            const messageEmbed = interaction.message.embeds[0];
+            const messageContent = messageEmbed.data.description;
+            const fields = messageEmbed.fields;
+            const existingRole = checkForUserId(`<@${interaction.user.id}>`, fields);
+            const replyEmbed = new EmbedBuilder();
+            if (existingRole) {
+                const { obj: role, index } = existingRole;
+                if (role.name === roleString) {
+                    fields[index].value = '`Empty`';
+                    replyEmbed.setColor(colours.discord.green).setDescription(`Successfully unassigned from **${roleString}**.`);
+                } else {
+                    replyEmbed.setColor(colours.discord.red).setDescription('You are signed up as a different role. Unassign from that role first.');
+                }
+            } else {
+                const firstEmptyObject = getEmptyObject(roleString, fields);
+                if (firstEmptyObject) {
+                    const { index } = firstEmptyObject;
+                    fields[index].value = `<@${interaction.user.id}>`;
+                    replyEmbed.setColor(colours.discord.green).setDescription(`Successfully assigned to **${roleString}**.`);
+                } else {
+                    replyEmbed.setColor(colours.discord.red).setDescription(`**${roleString}** is already taken.`);
+                }
+            }
+            const newEmbed = new EmbedBuilder()
+                .setColor(messageEmbed.color)
+                .setDescription(`${messageContent}`)
+                .setFields(fields);
+            await interaction.message.edit({ embeds: [newEmbed] })
+            return await interaction.editReply({ embeds: [replyEmbed] });
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Select ${roleString} Role, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async selectBase(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await this.handleRoleSelection(interaction, 'Base');
+    }
+
+    private async selectDPS(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await this.handleRoleSelection(interaction, 'DPS');
+    }
+
+    private async selectOutside(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await this.handleRoleSelection(interaction, 'Outside');
+    }
+
+    private async selectElf(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await this.handleRoleSelection(interaction, 'Elf');
+    }
+
+    private async disbandTrial(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        const { colours } = this.client.util;
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const expression: RegExp = /\`Host:\` <@(\d+)>/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let userId: string = '';
+        if (messageContent) {
+            const matches = messageContent.match(expression);
+            userId = matches ? matches[1] : '';
+            if (!userId) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Host could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (hasRolePermissions) {
+            if (interaction.user.id === userId) {
+                const newMessageContent = messageContent?.replace('> **Team**', '');
+                const newEmbed = new EmbedBuilder()
+                    .setColor(messageEmbed.color)
+                    .setDescription(`${newMessageContent}> Trial disbanded <t:${this.currentTime}:R>.`);
+                await interaction.message.edit({ content: '', embeds: [newEmbed], components: [] });
+                replyEmbed.setColor(colours.discord.green);
+                replyEmbed.setDescription(`Trial successfully disbanded!`);
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            } else {
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription(`Only <@${userId}> can disband this trial.`)
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Disband Trial, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async startTrial(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        const { colours, isTeamFull } = this.client.util;
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const fields: APIEmbedField[] = messageEmbed.fields;
+        const expression: RegExp = /\`Host:\` <@(\d+)>/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let userId: string = '';
+        if (messageContent) {
+            const matches = messageContent.match(expression);
+            userId = matches ? matches[1] : '';
+            if (!userId) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Host could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (hasRolePermissions) {
+            if (interaction.user.id === userId) {
+                if (isTeamFull(fields)) {
+                    const trialStarted = `> **Moderation**\n\n ⬥ Trial started <t:${this.currentTime}:R>.\n\n> **Team**`;
+                    const newMessageContent = messageContent?.replace('> **Team**', trialStarted);
+                    const newEmbed = new EmbedBuilder()
+                        .setColor(messageEmbed.color)
+                        .setFields(fields)
+                        .setDescription(`${newMessageContent}`);
+                    const controlPanel = new ActionRowBuilder<ButtonBuilder>()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('passTrialee')
+                                .setLabel('Pass')
+                                .setStyle(ButtonStyle.Success),
+                            new ButtonBuilder()
+                                .setCustomId('failTrialee')
+                                .setLabel('Fail')
+                                .setStyle(ButtonStyle.Danger)
+                        );
+                    await interaction.message.edit({ content: '', embeds: [newEmbed], components: [controlPanel] });
+                    replyEmbed.setColor(colours.discord.green);
+                    replyEmbed.setDescription(`Trial successfully started!`);
+                    return await interaction.editReply({ embeds: [replyEmbed] });
+                } else {
+                    replyEmbed.setColor(colours.discord.red)
+                    replyEmbed.setDescription(`The team is not full yet.`)
+                    return await interaction.editReply({ embeds: [replyEmbed] });
+                }
+            } else {
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription(`Only <@${userId}> can start this trial.`)
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Start Trial, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async passTrialee(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        const { colours } = this.client.util;
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const fields: APIEmbedField[] = messageEmbed.fields;
+        const hostExpression: RegExp = /\`Host:\` <@(\d+)>/;
+        const trialeeExpression: RegExp = /\`Discord:\` <@(\d+)>/;
+        const roleExpression: RegExp = /\`Tag:\` <@&(\d+)>/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let userId: string = '';
+        let trialeeId: string = '';
+        let roleId: string = '';
+        if (messageContent) {
+            const hostMatches = messageContent.match(hostExpression);
+            const trialeeMatches = messageContent.match(trialeeExpression);
+            const roleMatches = messageContent.match(roleExpression);
+            userId = hostMatches ? hostMatches[1] : '';
+            trialeeId = trialeeMatches ? trialeeMatches[1] : '';
+            roleId = roleMatches ? roleMatches[1] : '';
+            if (!userId || !trialeeId || !roleId) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Host, Trialee or Tag could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (hasRolePermissions) {
+            if (interaction.user.id === userId) {
+                const splitResults = messageContent?.split('⬥');
+                if (!splitResults) {
+                    replyEmbed.setColor(colours.discord.red)
+                    replyEmbed.setDescription(`Message could not be parsed correctly.`)
+                    return await interaction.editReply({ embeds: [replyEmbed] });
+                }
+                const messageContentWithoutStarted = splitResults[0];
+                const dirtyStarted = splitResults[1];
+                const started = dirtyStarted?.replace('> **Team**', '').trim();
+                const newMessageContent = `${messageContentWithoutStarted}⬥ ${started}\n⬥ <@${trialeeId}> successfully passed <t:${this.currentTime}:R>!\n\n> **Team**`;
+
+                // Save trial to database.
+                await this.saveTrial(interaction, trialeeId, roleId, userId, fields);
+
+                // Give the trialee the correct role.
+                await this.assignMatchmakingRole(interaction, roleId, trialeeId);
+
+                const newEmbed = new EmbedBuilder()
+                    .setColor(colours.discord.green)
+                    .setFields(fields)
+                    .setDescription(`${newMessageContent}`);
+                await interaction.message.edit({ content: '', embeds: [newEmbed], components: [] });
+                replyEmbed.setColor(colours.discord.green);
+                replyEmbed.setDescription(`Trialee successfully passed!`);
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            } else {
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription(`Only <@${userId}> can pass this trialee.`)
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Pass Trialee, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async failTrialee(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        const { colours } = this.client.util;
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const fields: APIEmbedField[] = messageEmbed.fields;
+        const hostExpression: RegExp = /\`Host:\` <@(\d+)>/;
+        const trialeeExpression: RegExp = /\`Discord:\` <@(\d+)>/;
+        const roleExpression: RegExp = /\`Tag:\` <@&(\d+)>/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let userId: string = '';
+        let trialeeId: string = '';
+        let roleId: string = '';
+        if (messageContent) {
+            const hostMatches = messageContent.match(hostExpression);
+            const trialeeMatches = messageContent.match(trialeeExpression);
+            const roleMatches = messageContent.match(roleExpression);
+            userId = hostMatches ? hostMatches[1] : '';
+            trialeeId = trialeeMatches ? trialeeMatches[1] : '';
+            roleId = roleMatches ? roleMatches[1] : '';
+            if (!userId || !trialeeId || !roleId) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Host, Trialee or Tag could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (hasRolePermissions) {
+            if (interaction.user.id === userId) {
+                const splitResults = messageContent?.split('⬥');
+                if (!splitResults) {
+                    replyEmbed.setColor(colours.discord.red)
+                    replyEmbed.setDescription(`Message could not be parsed correctly.`)
+                    return await interaction.editReply({ embeds: [replyEmbed] });
+                }
+                const messageContentWithoutStarted = splitResults[0];
+                const dirtyStarted = splitResults[1];
+                const started = dirtyStarted?.replace('> **Team**', '').trim();
+                const newMessageContent = `${messageContentWithoutStarted}⬥ ${started}\n⬥ <@${trialeeId}> failed <t:${this.currentTime}:R>!\n\n> **Team**`;
+
+                // Save trial to database.
+                await this.saveTrial(interaction, trialeeId, roleId, userId, fields);
+
+                const newEmbed = new EmbedBuilder()
+                    .setColor(colours.discord.red)
+                    .setFields(fields)
+                    .setDescription(`${newMessageContent}`);
+                await interaction.message.edit({ content: '', embeds: [newEmbed], components: [] });
+                replyEmbed.setColor(colours.discord.green);
+                replyEmbed.setDescription(`Trialee failed!`);
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            } else {
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription(`Only <@${userId}> can fail this trialee.`)
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Fail Trialee, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
 
     private async rejectDPM(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
 
@@ -250,7 +957,7 @@ export default class ButtonHandler {
 
         const rolePermissions = await hasRolePermissions(this.client, ['admin', 'owner'], interaction);
         const overridePermissions = await hasOverridePermissions(interaction, 'reports');
-        
+
         if (rolePermissions || overridePermissions) {
             const messageEmbed = interaction.message.embeds[0];
             const messageContent = messageEmbed.data.description;
