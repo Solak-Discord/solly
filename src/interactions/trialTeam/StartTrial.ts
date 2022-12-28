@@ -161,6 +161,7 @@ export default class Pass extends BotInteraction {
         const { roles, colours, channels } = this.client.util;
 
         const info = await this.ticketToolEmbedContent(interaction);
+        console.log(info)
 
         const expression = /^(\d{4})-(\d{2})-(\d{2}) (\d{1,2}):(\d{2})$/gm;
 
