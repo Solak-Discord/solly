@@ -95,6 +95,7 @@ export default class Pass extends BotInteraction {
         try {
             const messages = await interaction.channel?.messages.fetchPinned();
             if (!messages) return;
+            console.log(messages);
             // Get correct message
             let message: Message | null = null;
             for (const [_id, item] of messages) {
