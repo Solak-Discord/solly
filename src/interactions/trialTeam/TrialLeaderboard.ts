@@ -80,7 +80,7 @@ export default class TrialLeaderboard extends BotInteraction {
             .setTimestamp()
             .setTitle('Solak Trial Team Leaderboard')
             .setColor(colours.gold)
-            .setDescription(`> There has been **${totalTrials}** trials recorded and **${trialsParticipated.length}** unique ${roles.trialTeam} members!`)
+            .setDescription(`> There has been **${totalTrials}** trial${totalTrials !== 1 ? 's' : ''} recorded and **${trialsParticipated.length}** unique ${roles.trialTeam} members!`)
             .addFields(
                 { name: 'Trials Hosted', value: this.createFieldFromArray(trialsHosted), inline: true },
                 { name: 'Trials Participated', value: this.createFieldFromArray(trialsParticipated), inline: true }
