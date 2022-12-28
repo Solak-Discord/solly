@@ -162,7 +162,7 @@ export default class Pass extends BotInteraction {
 
         const info = await this.ticketToolEmbedContent(interaction);
 
-        const expression = /^(\d{4})-(\d{2})-(\d{2}) (\d{1,2}):(\d{2})$/gm;
+        const expression = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/;
 
         let errorMessage = '';
 
@@ -184,6 +184,7 @@ export default class Pass extends BotInteraction {
         if (!info) return await interaction.editReply({ embeds: [errorEmbed] });
         if (time) {
             const isValid = expression.test(time);
+            console.log(isValid)
             if (!isValid) {
                 return await interaction.editReply({ embeds: [errorEmbed] });
             }
