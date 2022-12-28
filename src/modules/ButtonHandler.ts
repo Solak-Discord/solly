@@ -1,4 +1,4 @@
-import { ActionRowBuilder, APIEmbedField, ButtonBuilder, ButtonInteraction, ButtonStyle, Embed, EmbedBuilder, GuildMember, InteractionResponse, Message, TextChannel } from 'discord.js';
+import { ActionRowBuilder, APIEmbedField, ButtonBuilder, ButtonInteraction, ButtonStyle, Embed, EmbedBuilder, GuildMember, InteractionResponse, Message, Role, TextChannel } from 'discord.js';
 import { Report } from '../entity/Report';
 import { Trial } from '../entity/Trial';
 import { TrialParticipation } from '../entity/TrialParticipation';
@@ -256,7 +256,7 @@ export default class ButtonHandler {
 
     public async assignMatchmakingRole(interaction: ButtonInteraction<'cached'>, cleanRoleId: string, trialeeId: string) {
 
-        const { roles, stripRole, categorize, getKeyFromValue } = this.client.util;
+        const { roles, colours, channels, stripRole, categorize, getKeyFromValue } = this.client.util;
 
         const hierarchy: Hierarchy = {
             threeSeven: ['noRealm', 'threeSevenRootskips', 'rootskips', 'threeSevenExperienced', 'experienced', 'threeSevenMaster', 'master', 'threeSevenGrandmaster', 'grandmaster'],
@@ -326,7 +326,13 @@ export default class ButtonHandler {
         const user = await interaction.guild?.members.fetch(trialeeId);
         const userRoles = user?.roles.cache.map(role => role.id) || [];
 
-        // Check for pre-requisite
+        let sendMessage = false;
+        let anyAdditionalRole;
+        const roleObject = await interaction.guild?.roles.fetch(stripRole(roles[role])) as Role;
+        let embedColour = colours.discord.green;
+
+        const channel = await this.client.channels.fetch(channels.roleConfirmations) as TextChannel;
+
         if (role in prerequisites) {
             // For each key inside a role pre-requisite
             for (const key in prerequisites[role]) {
@@ -345,7 +351,11 @@ export default class ButtonHandler {
                 // Assign the additional role and remove the existing pre-requisite roles
                 if (assign) {
                     const assignedRoleId = stripRole(roles[key]);
+                    if (!(userRoles?.includes(assignedRoleId)) && !hasHigherRole(role)) {
+                        sendMessage = true;
+                    }
                     if (!hasHigherRole(role) && !userRoles?.includes(assignedRoleId)) await user?.roles.add(assignedRoleId);
+                    embedColour = roleObject.color;
                     prerequisites[role][key].forEach((prereqRole: string) => {
                         const roleId = stripRole(roles[prereqRole]);
                         if (userRoles?.includes(roleId)) user?.roles.remove(roleId);
@@ -363,10 +373,15 @@ export default class ButtonHandler {
                             if (userRoles?.includes(removeRoleId)) await user?.roles.remove(removeRoleId);
                         };
                     }
+                    anyAdditionalRole = key;
                     // Just add the new role as no pre-requisites for the combined role
                 } else {
                     const roleId = stripRole(roles[role]);
                     if (!hasHigherRole(role) && !userRoles?.includes(roleId)) user?.roles.add(roleId);
+                    embedColour = roleObject.color;
+                    if (!(userRoles?.includes(roleId)) && !hasHigherRole(role)) {
+                        sendMessage = true;
+                    }
                     // Remove inferior roles
                     if ((role in removeHierarchy) && !hasHigherRole(role)) {
                         for await (const roleToRemove of removeHierarchy[role]) {
@@ -380,6 +395,10 @@ export default class ButtonHandler {
         } else {
             const roleId = stripRole(roles[role]);
             if (!hasHigherRole(role) && !userRoles?.includes(roleId)) await user?.roles.add(roleId);
+            embedColour = roleObject.color;
+            if (!(userRoles?.includes(roleId)) && !hasHigherRole(role)) {
+                sendMessage = true;
+            }
             if (role in removeHierarchy) {
                 for await (const roleToRemove of removeHierarchy[role]) {
                     const removeRoleId = stripRole(roles[roleToRemove]);
@@ -387,6 +406,41 @@ export default class ButtonHandler {
                 };
             }
         }
+
+        let returnedMessage = {
+            id: '',
+            url: ''
+        };
+        const embed = new EmbedBuilder()
+            .setAuthor({ name: interaction.user.username, iconURL: interaction.user.avatarURL() || this.client.user?.avatarURL() || 'https://media.discordapp.net/attachments/1027186342620299315/1047598720834875422/618px-Solly_pet_1.png' })
+            .setTimestamp()
+            .setColor(embedColour)
+            .setDescription(`
+            Congratulations to <@${trialeeId}> on achieving ${roles[role]}!
+            ${anyAdditionalRole ? `By achieving this role, they are also awarded ${roles[anyAdditionalRole]}!` : ''}
+            `);
+        if (sendMessage && channel) await channel.send({ embeds: [embed] }).then(message => {
+            returnedMessage.id = message.id;
+            returnedMessage.url = message.url;
+        });
+
+        const logChannel = await this.client.channels.fetch(channels.botRoleLog) as TextChannel;
+        const buttonRow = new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('rejectRoleAssign')
+                    .setLabel('Reject Approval')
+                    .setStyle(ButtonStyle.Danger),
+            );
+        const logEmbed = new EmbedBuilder()
+            .setTimestamp()
+            .setColor(embedColour)
+            .setDescription(`
+            ${roles[role]} was assigned to <@${trialeeId}> by <@${interaction.user.id}>.
+            ${anyAdditionalRole ? `${roles[anyAdditionalRole]} was also assigned.\n` : ''}
+            **Message**: [${returnedMessage.id}](${returnedMessage.url})
+            `);
+        if (sendMessage) await logChannel.send({ embeds: [logEmbed], components: [buttonRow] });
     }
 
     public async saveTrial(interaction: ButtonInteraction<'cached'>, trialeeId: string, roleId: string, userId: string, fields: APIEmbedField[]): Promise<void> {
