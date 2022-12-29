@@ -167,7 +167,7 @@ export default class ButtonHandler {
         } else {
             this.client.logger.log(
                 {
-                    message: `Attempted restricted permissions. { command: Pass Trialee, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    message: `Attempted restricted permissions. { command: Next Upkeep, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
                     handler: this.constructor.name,
                 },
                 true
@@ -245,7 +245,7 @@ export default class ButtonHandler {
         } else {
             this.client.logger.log(
                 {
-                    message: `Attempted restricted permissions. { command: Pass Trialee, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    message: `Attempted restricted permissions. { command: Previous Upkeep, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
                     handler: this.constructor.name,
                 },
                 true
@@ -557,7 +557,8 @@ export default class ButtonHandler {
             }
         }
         if (hasRolePermissions) {
-            if (interaction.user.id === userId) {
+            const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+            if ((interaction.user.id === userId)|| hasElevatedRole) {
                 const newMessageContent = messageContent?.replace('> **Team**', '');
                 const newEmbed = new EmbedBuilder()
                     .setColor(messageEmbed.color)
@@ -568,7 +569,7 @@ export default class ButtonHandler {
                 return await interaction.editReply({ embeds: [replyEmbed] });
             } else {
                 replyEmbed.setColor(colours.discord.red)
-                replyEmbed.setDescription(`Only <@${userId}> can disband this trial.`)
+                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can disband this trial.`)
                 return await interaction.editReply({ embeds: [replyEmbed] });
             }
         } else {
@@ -604,7 +605,8 @@ export default class ButtonHandler {
             }
         }
         if (hasRolePermissions) {
-            if (interaction.user.id === userId) {
+            const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+            if ((interaction.user.id === userId)|| hasElevatedRole) {
                 // if (isTeamFull(fields)) {
                 const trialStarted = `> **Moderation**\n\n ⬥ Trial started <t:${this.currentTime}:R>.\n\n> **Team**`;
                 const newMessageContent = messageContent?.replace('> **Team**', trialStarted);
@@ -634,7 +636,7 @@ export default class ButtonHandler {
                 // }
             } else {
                 replyEmbed.setColor(colours.discord.red)
-                replyEmbed.setDescription(`Only <@${userId}> can start this trial.`)
+                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can start this trial.`)
                 return await interaction.editReply({ embeds: [replyEmbed] });
             }
         } else {
@@ -678,7 +680,8 @@ export default class ButtonHandler {
             }
         }
         if (hasRolePermissions) {
-            if (interaction.user.id === userId) {
+            const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+            if ((interaction.user.id === userId)|| hasElevatedRole) {
                 const splitResults = messageContent?.split('⬥');
                 if (!splitResults) {
                     replyEmbed.setColor(colours.discord.red)
@@ -706,7 +709,7 @@ export default class ButtonHandler {
                 return await interaction.editReply({ embeds: [replyEmbed] });
             } else {
                 replyEmbed.setColor(colours.discord.red)
-                replyEmbed.setDescription(`Only <@${userId}> can pass this trialee.`)
+                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can pass this trialee.`)
                 return await interaction.editReply({ embeds: [replyEmbed] });
             }
         } else {
@@ -750,7 +753,8 @@ export default class ButtonHandler {
             }
         }
         if (hasRolePermissions) {
-            if (interaction.user.id === userId) {
+            const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+            if ((interaction.user.id === userId)|| hasElevatedRole) {
                 const splitResults = messageContent?.split('⬥');
                 if (!splitResults) {
                     replyEmbed.setColor(colours.discord.red)
@@ -775,7 +779,7 @@ export default class ButtonHandler {
                 return await interaction.editReply({ embeds: [replyEmbed] });
             } else {
                 replyEmbed.setColor(colours.discord.red)
-                replyEmbed.setDescription(`Only <@${userId}> can fail this trialee.`)
+                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can fail this trialee.`)
                 return await interaction.editReply({ embeds: [replyEmbed] });
             }
         } else {
