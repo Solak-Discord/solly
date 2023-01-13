@@ -57,7 +57,6 @@ export default class TrialLeaderboard extends BotInteraction {
             .from(Trial, 'trial')
             .groupBy('trial.host')
             .orderBy('count', 'DESC')
-            .take(10)
             .getRawMany();
 
         // Get top 10 Trials participated members
@@ -67,7 +66,6 @@ export default class TrialLeaderboard extends BotInteraction {
             .from(TrialParticipation, 'trialParticipation')
             .groupBy('trialParticipation.participant')
             .orderBy('count', 'DESC')
-            .take(10)
             .getRawMany();
 
         // Get total trials without making another database call
@@ -82,8 +80,8 @@ export default class TrialLeaderboard extends BotInteraction {
             .setColor(colours.gold)
             .setDescription(`> There has been **${totalTrials}** trial${totalTrials !== 1 ? 's' : ''} recorded and **${trialsParticipated.length}** unique ${roles.trialTeam} members!`)
             .addFields(
-                { name: 'Trials Hosted', value: this.createFieldFromArray(trialsHosted), inline: true },
-                { name: 'Trials Participated', value: this.createFieldFromArray(trialsParticipated), inline: true }
+                { name: 'Trials Hosted', value: this.createFieldFromArray(trialsHosted.slice(0,10)), inline: true },
+                { name: 'Trials Participated', value: this.createFieldFromArray(trialsParticipated.slice(0,10)), inline: true }
             )
 
         await interaction.editReply({ embeds: [embed] });
