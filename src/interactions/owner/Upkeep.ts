@@ -39,7 +39,7 @@ export default class Upkeep extends BotInteraction {
 
         // Process result into a key value pair
         const participation: any = {}
-        trialsParticipated.forEach(trial => {
+        trialsParticipated.forEach((trial: any) => {
             participation[trial.user] = trial.count;
         })
 

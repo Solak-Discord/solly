@@ -70,7 +70,7 @@ export default class ButtonHandler {
 
         // Process result into a key value pair
         const participation: any = {}
-        trialsParticipated.forEach(trial => {
+        trialsParticipated.forEach((trial: any) => {
             participation[trial.user] = trial.count;
         })
 
@@ -558,7 +558,7 @@ export default class ButtonHandler {
         }
         if (hasRolePermissions) {
             const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
-            if ((interaction.user.id === userId)|| hasElevatedRole) {
+            if ((interaction.user.id === userId) || hasElevatedRole) {
                 const newMessageContent = messageContent?.replace('> **Team**', '');
                 const newEmbed = new EmbedBuilder()
                     .setColor(messageEmbed.color)
@@ -606,7 +606,7 @@ export default class ButtonHandler {
         }
         if (hasRolePermissions) {
             const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
-            if ((interaction.user.id === userId)|| hasElevatedRole) {
+            if ((interaction.user.id === userId) || hasElevatedRole) {
                 // if (isTeamFull(fields)) {
                 const trialStarted = `> **Moderation**\n\n ⬥ Trial started <t:${this.currentTime}:R>.\n\n> **Team**`;
                 const newMessageContent = messageContent?.replace('> **Team**', trialStarted);
@@ -681,7 +681,7 @@ export default class ButtonHandler {
         }
         if (hasRolePermissions) {
             const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
-            if ((interaction.user.id === userId)|| hasElevatedRole) {
+            if ((interaction.user.id === userId) || hasElevatedRole) {
                 const splitResults = messageContent?.split('⬥');
                 if (!splitResults) {
                     replyEmbed.setColor(colours.discord.red)
@@ -754,7 +754,7 @@ export default class ButtonHandler {
         }
         if (hasRolePermissions) {
             const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
-            if ((interaction.user.id === userId)|| hasElevatedRole) {
+            if ((interaction.user.id === userId) || hasElevatedRole) {
                 const splitResults = messageContent?.split('⬥');
                 if (!splitResults) {
                     replyEmbed.setColor(colours.discord.red)

@@ -26,7 +26,7 @@ export default class TrialLeaderboard extends BotInteraction {
         if (array.length === 0) return 'None';
         array.forEach((item, index) => {
             let prefix: string;
-            switch(index){
+            switch (index) {
                 case 0:
                     prefix = gem1;
                     break;
@@ -70,7 +70,7 @@ export default class TrialLeaderboard extends BotInteraction {
 
         // Get total trials without making another database call
         let totalTrials = 0;
-        trialsHosted.forEach(trial => {
+        trialsHosted.forEach((trial: any) => {
             totalTrials += trial.count;
         })
 
@@ -80,8 +80,8 @@ export default class TrialLeaderboard extends BotInteraction {
             .setColor(colours.gold)
             .setDescription(`> There has been **${totalTrials}** trial${totalTrials !== 1 ? 's' : ''} recorded and **${trialsParticipated.length}** unique ${roles.trialTeam} members!`)
             .addFields(
-                { name: 'Trials Hosted', value: this.createFieldFromArray(trialsHosted.slice(0,10)), inline: true },
-                { name: 'Trials Participated', value: this.createFieldFromArray(trialsParticipated.slice(0,10)), inline: true }
+                { name: 'Trials Hosted', value: this.createFieldFromArray(trialsHosted.slice(0, 10)), inline: true },
+                { name: 'Trials Participated', value: this.createFieldFromArray(trialsParticipated.slice(0, 10)), inline: true }
             )
 
         await interaction.editReply({ embeds: [embed] });
