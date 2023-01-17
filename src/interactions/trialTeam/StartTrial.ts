@@ -129,7 +129,7 @@ export default class Pass extends BotInteraction {
         }
 
         const validTeamsizes = ['Duo', '3-7'];
-        const validRanks = ['Experienced', 'Master', 'Grandmaster'];
+        const validRanks = ['Experienced', 'Master', 'Grandmaster', 'Rootskips'];
         if (!validTeamsizes.includes(teamSize) || !validRanks.includes(rank)) return;
         const keyMap: KeyMap = {
             'Duo': 'duo',
