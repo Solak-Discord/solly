@@ -124,6 +124,7 @@ export default class UtilityHandler {
                 experienced: '<@&1043923757707829447>',
                 duoGrandmaster: '<@&1043923757732999225>',
                 threeSevenGrandmaster: '<@&1043923757732999224>',
+                fours: '<@&1077211897931235339>',
                 grandmaster: '<@&1043923757732999226>',
                 erethdorsBane: '<@&1043923757758156862>',
                 solakRookie: '<@&1043923757665890437>',
@@ -148,10 +149,13 @@ export default class UtilityHandler {
                 mastery: '<@&1043923757691047944>',
                 extreme: '<@&1043923757732999222>',
                 moderator: '<@&1050759587898339409>',
+                notifyExperienced: '<@&1077221105498066974>',
+                notifyMaster: '<@&1077221066587512852>',
+                notifyGM: '<@&1077221033322500096>',
             }
         }
         return {
-            duoMaster: '<@&1024218594504081408>',
+            duoMaster: '<@&1074344442355535872>',
             threeSevenMaster: '<@&981579218771120249>',
             master: '<@&1024260851286413322>',
             solakAddict: '<@&553715068273950751>',
@@ -165,8 +169,9 @@ export default class UtilityHandler {
             duoExperienced: '<@&931903449396834364>',
             threeSevenExperienced: '<@&981579337159565383>',
             experienced: '<@&981581909387800586>',
-            duoGrandmaster: '<@&1024218474727342100>',
-            threeSevenGrandmaster: '<@&969190288675450900>',
+            duoGrandmaster: '<@&1074344219285672096>',
+            threeSevenGrandmaster: '<@&1074343947507335258>',
+            fours: '<@&1074344307068252210>',
             grandmaster: '<@&1024260846152597575>',
             erethdorsBane: '<@&793913994980491344>',
             solakRookie: '<@&553714327740481536>',
@@ -191,6 +196,9 @@ export default class UtilityHandler {
             mastery: '<@&927278888403480668>',
             extreme: '<@&793847049841279007>',
             moderator: '<@&1050111253185568788>',
+            notifyExperienced: '<@&1070733909119209512>',
+            notifyMaster: '<@&1070734914716172390>',
+            notifyGM: '<@&1070734957426786324>',
         }
     }
 
@@ -234,7 +242,7 @@ export default class UtilityHandler {
 
     public categorizeChannel = (role: string) => {
         const overrides = {
-            roleConfirmations: ['erethdorsBane', 'solakWRHolder'],
+            roleConfirmations: ['erethdorsBane', 'solakWRHolder', 'fours'],
         }
         if (this.categories.killCount.includes(role) || this.categories.collectionLog.includes(role)) {
             return 'achievementsAndLogs'

@@ -29,10 +29,10 @@ export default class Pass extends BotInteraction {
 
     get roleOptions() {
         const assignOptions: any = {
-            'Base (Duo/5s)': 'Base',
+            'Base (Duo/4s/5s)': 'Base',
             'DPS (Duo)': 'DPS',
-            'Outside (5s)': 'Outside',
-            'Elf (5s)': 'Elf',
+            'Outside (4s/5s)': 'Outside',
+            'Elf (4s/5s)': 'Elf',
         }
         const options: any = [];
         Object.keys(assignOptions).forEach((key: string) => {
@@ -44,7 +44,8 @@ export default class Pass extends BotInteraction {
     get validBossRolesForTeamSize(): ValidRole {
         return {
             'Duo': ['Base', 'DPS'],
-            '3-7': ['Base', 'Outside', 'Elf']
+            '3-7': ['Base', 'Outside', 'Elf'],
+            '4s': ['Base', 'Outside', 'Elf']
         }
     }
 
@@ -128,14 +129,16 @@ export default class Pass extends BotInteraction {
             [key: string]: string;
         }
 
-        const validTeamsizes = ['Duo', '3-7'];
+        const validTeamsizes = ['Duo', '3-7', '4s'];
         const validRanks = ['Experienced', 'Master', 'Grandmaster', 'Rootskips'];
         if (!validTeamsizes.includes(teamSize) || !validRanks.includes(rank)) return;
         const keyMap: KeyMap = {
             'Duo': 'duo',
-            '3-7': 'threeSeven'
+            '3-7': 'threeSeven',
+            '4s': 'fours',
         }
-        const key = `${keyMap[teamSize]}${rank}`;
+        let key = `${keyMap[teamSize]}${rank}`;
+        if (teamSize === '4s') key = 'fours';
         if (!this.client.util.roles[key]) return;
         const roleObject = await interaction.guild?.roles.fetch(this.client.util.stripRole(this.client.util.roles[key])) as Role;
         return {
@@ -150,6 +153,18 @@ export default class Pass extends BotInteraction {
         const [hours, minutes] = time.split(':').map(Number);
         const gametime = new Date(Date.UTC(year, month - 1, day, hours, minutes))
         return `<t:${Math.round(gametime.getTime() / 1000)}:f>`;
+    }
+
+    public notifyTrialTeam = (rank: string): string => {
+        if (rank === 'Experienced') {
+            return this.client.util.roles.notifyExperienced
+        } else if (rank === 'Master') {
+            return this.client.util.roles.notifyMaster
+        } else if (rank === 'Grandmaster') {
+            return this.client.util.roles.notifyGM
+        } else {
+            return ''
+        }
     }
 
     async run(interaction: ChatInputCommandInteraction) {
@@ -254,7 +269,24 @@ export default class Pass extends BotInteraction {
             { name: 'Elf', value: '`Empty`', inline: true },
         ]
 
-        const duoEmbed = new EmbedBuilder()
+        const foursFields = [
+            { name: 'Base', value: checkRole('Base', info), inline: true },
+            { name: 'Outside', value: checkRole('Outside', info), inline: true },
+            { name: 'Elf', value: checkRole('Elf', info), inline: true },
+            { name: 'Elf', value: '`Empty`', inline: true },
+        ]
+
+        const getTeamsizeFields = () => {
+            if (info.teamSize === 'Duo') {
+                return duoFields
+            } else if (info.teamSize === '4s') {
+                return foursFields
+            } else {
+                return groupFields
+            }
+        }
+
+        const cardEmbed = new EmbedBuilder()
             .setAuthor({ name: interaction.user.username, iconURL: interaction.user.avatarURL() || this.client.user?.avatarURL() || 'https://media.discordapp.net/attachments/1027186342620299315/1047598720834875422/618px-Solly_pet_1.png' })
             .setColor(roleInfo?.role.color || colours.lightblue)
             .setDescription(`
@@ -273,13 +305,11 @@ export default class Pass extends BotInteraction {
             \`Tag:\` ${roleInfo?.key}\n
             > **Team**
             `)
-            .addFields(
-                info.teamSize === 'Duo' ? duoFields : groupFields
-            );
+            .addFields(getTeamsizeFields());
 
         const channel = await this.client.channels.fetch(channels.trialScheduling) as TextChannel;
         await channel.send(
-            { embeds: [duoEmbed], components: [info.teamSize === 'Duo' ? duoButtonRow : groupButtonRow, controlPanel] }
+            { content: this.notifyTrialTeam(info.rank), embeds: [cardEmbed], components: [info.teamSize === 'Duo' ? duoButtonRow : groupButtonRow, controlPanel] }
         )
 
         const replyEmbed = new EmbedBuilder()

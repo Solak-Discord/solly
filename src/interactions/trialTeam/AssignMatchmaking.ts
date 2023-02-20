@@ -93,7 +93,8 @@ export default class Pass extends BotInteraction {
             'Duo Master': 'duoMaster',
             '3-7 Master': 'threeSevenMaster',
             'Duo Grandmaster': 'duoGrandmaster',
-            '3-7 Grandmaster': 'threeSevenGrandmaster'
+            '3-7 Grandmaster': 'threeSevenGrandmaster',
+            'Verified 4s': 'fours',
         }
         const options: any = [];
         Object.keys(assignOptions).forEach((key: string) => {
