@@ -155,13 +155,15 @@ export default class Pass extends BotInteraction {
         return `<t:${Math.round(gametime.getTime() / 1000)}:f>`;
     }
 
-    public notifyTrialTeam = (rank: string): string => {
+    public notifyTrialTeam = (rank: string, teamSize: string): string => {
         if (rank === 'Experienced') {
             return this.client.util.roles.notifyExperienced
         } else if (rank === 'Master') {
             return this.client.util.roles.notifyMaster
-        } else if (rank === 'Grandmaster') {
+        } else if (rank === 'Grandmaster' && teamSize !== '4s') {
             return this.client.util.roles.notifyGM
+        } else if (teamSize === '4s') {
+            return this.client.util.roles.notify4s
         } else {
             return ''
         }
@@ -309,7 +311,7 @@ export default class Pass extends BotInteraction {
 
         const channel = await this.client.channels.fetch(channels.trialScheduling) as TextChannel;
         await channel.send(
-            { content: this.notifyTrialTeam(info.rank), embeds: [cardEmbed], components: [info.teamSize === 'Duo' ? duoButtonRow : groupButtonRow, controlPanel] }
+            { content: this.notifyTrialTeam(info.rank, info.teamSize), embeds: [cardEmbed], components: [info.teamSize === 'Duo' ? duoButtonRow : groupButtonRow, controlPanel] }
         )
 
         const replyEmbed = new EmbedBuilder()

@@ -152,6 +152,7 @@ export default class UtilityHandler {
                 notifyExperienced: '<@&1077221105498066974>',
                 notifyMaster: '<@&1077221066587512852>',
                 notifyGM: '<@&1077221033322500096>',
+                notify4s: '<@&1077228261131698316>'
             }
         }
         return {
@@ -199,6 +200,7 @@ export default class UtilityHandler {
             notifyExperienced: '<@&1070733909119209512>',
             notifyMaster: '<@&1070734914716172390>',
             notifyGM: '<@&1070734957426786324>',
+            notify4s: '<@&1077226312277692466>'
         }
     }
 
