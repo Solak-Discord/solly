@@ -156,14 +156,18 @@ export default class Pass extends BotInteraction {
     }
 
     public notifyTrialTeam = (rank: string, teamSize: string): string => {
-        if (rank === 'Experienced') {
-            return this.client.util.roles.notifyExperienced
-        } else if (rank === 'Master') {
-            return this.client.util.roles.notifyMaster
-        } else if (rank === 'Grandmaster' && teamSize !== '4s') {
-            return this.client.util.roles.notifyGM
-        } else if (teamSize === '4s') {
-            return this.client.util.roles.notify4s
+        if (['4s', '3-7'].includes(teamSize)) {
+            if (rank === 'Experienced') {
+                return this.client.util.roles.notifyExperienced
+            } else if (rank === 'Master') {
+                return this.client.util.roles.notifyMaster
+            } else if (rank === 'Grandmaster' && teamSize !== '4s') {
+                return this.client.util.roles.notifyGM
+            } else if (teamSize === '4s') {
+                return this.client.util.roles.notify4s
+            } else {
+                return ''
+            }
         } else {
             return ''
         }
