@@ -1,19 +1,19 @@
 import BotInteraction from '../../types/BotInteraction';
 import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { Trial } from '../../entity/Trial';
-import { TrialParticipation } from '../../entity/TrialParticipation';
+import { Reaper } from '../../entity/Reaper';
+import { ReaperParticipation } from '../../entity/ReaperParticipation';
 
-export default class TrialLeaderboard extends BotInteraction {
+export default class ReaperLeaderboard extends BotInteraction {
     get name() {
-        return 'trial-leaderboard';
+        return 'reaper-leaderboard';
     }
 
     get description() {
-        return 'Trial Team Leaderboards';
+        return 'Reaper Team Leaderboards';
     }
 
     get permissions() {
-        return 'TRIAL_TEAM';
+        return 'REAPER';
     }
 
     get slashData() {
@@ -51,38 +51,38 @@ export default class TrialLeaderboard extends BotInteraction {
         const { dataSource } = this.client;
         const { colours, roles } = this.client.util;
 
-        // Get top 10 Trials hosted members
-        const trialsHosted = await dataSource.createQueryBuilder()
-            .select('trial.host', 'user')
+        // Get top 10 Reapers hosted members
+        const reapersHosted = await dataSource.createQueryBuilder()
+            .select('reaper.host', 'user')
             .addSelect('COUNT(*)', 'count')
-            .from(Trial, 'trial')
-            .groupBy('trial.host')
+            .from(Reaper, 'reaper')
+            .groupBy('reaper.host')
             .orderBy('count', 'DESC')
             .getRawMany();
 
-        // Get top 10 Trials participated members
-        const trialsParticipated = await dataSource.createQueryBuilder()
-            .select('trialParticipation.participant', 'user')
+        // Get top 10 Reapers participated members
+        const reapersParticipated = await dataSource.createQueryBuilder()
+            .select('reaperParticipation.participant', 'user')
             .addSelect('COUNT(*)', 'count')
-            .from(TrialParticipation, 'trialParticipation')
-            .groupBy('trialParticipation.participant')
+            .from(ReaperParticipation, 'reaperParticipation')
+            .groupBy('reaperParticipation.participant')
             .orderBy('count', 'DESC')
             .getRawMany();
 
         // Get total trials without making another database call
-        let totalTrials = 0;
-        trialsHosted.forEach((trial: any) => {
-            totalTrials += trial.count;
+        let totalReapers = 0;
+        reapersHosted.forEach((reaper: any) => {
+            totalReapers += reaper.count;
         })
 
         const embed = new EmbedBuilder()
             .setTimestamp()
-            .setTitle('Solak Trial Team Leaderboard')
-            .setColor(colours.darkPurple)
-            .setDescription(`> There has been **${totalTrials}** trial${totalTrials !== 1 ? 's' : ''} recorded and **${trialsParticipated.length}** unique ${roles.trialTeam} members!`)
+            .setTitle('Solak Reaper Team Leaderboard')
+            .setColor(colours.tan)
+            .setDescription(`> There has been **${totalReapers}** trial${totalReapers !== 1 ? 's' : ''} recorded and **${reapersParticipated.length}** unique ${roles.reaper} members!`)
             .addFields(
-                { name: 'Trials Hosted', value: this.createFieldFromArray(trialsHosted.slice(0, 10)), inline: true },
-                { name: 'Trials Participated', value: this.createFieldFromArray(trialsParticipated.slice(0, 10)), inline: true }
+                { name: 'Reapers Hosted', value: this.createFieldFromArray(reapersHosted.slice(0, 10)), inline: true },
+                { name: 'Reapers Participated', value: this.createFieldFromArray(reapersParticipated.slice(0, 10)), inline: true }
             )
 
         await interaction.editReply({ embeds: [embed] });

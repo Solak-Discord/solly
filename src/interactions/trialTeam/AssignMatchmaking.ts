@@ -26,7 +26,7 @@ export default class Pass extends BotInteraction {
     }
 
     get permissions() {
-        return 'TRIAL_TEAM';
+        return 'TRIAL_TEAM_AND_TEACHER';
     }
 
     get prerequisites(): Prerequisites {

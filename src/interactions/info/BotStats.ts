@@ -4,11 +4,11 @@ import { ChatInputCommandInteraction } from 'discord.js';
 
 export default class Stats extends BotInteraction {
     get name() {
-        return 'stats';
+        return 'bot-stats';
     }
 
     get description() {
-        return 'My current info!';
+        return 'Bot connection and memory statistics.';
     }
 
     get slashData() {

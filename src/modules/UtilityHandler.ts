@@ -56,6 +56,8 @@ export default class UtilityHandler {
             default: 5198940,
             lightblue: 302332,
             darkgrey: 333333,
+            tan: 10588508, // Reaper
+            darkPurple: 7157747, // Trial Team
             discord: {
                 green: 5763719,
                 red: 15548997
@@ -82,6 +84,8 @@ export default class UtilityHandler {
                 tempVCCreate: '1044828975106641920',
                 dpmCalc: '1043923759280697406',
                 trialScheduling: '1051512803485286481',
+                reaperScheduling: '1043923759763034194',
+                reaperSquad: '1043923759763034197',
             }
         }
         return {
@@ -93,6 +97,8 @@ export default class UtilityHandler {
             tempVCCreate: '934588464068968479',
             dpmCalc: '927485855625515039',
             trialScheduling: '1050019465993142412',
+            reaperScheduling: '1079703262040707164',
+            reaperSquad: '922046772958859274',
         }
     }
 
@@ -152,7 +158,9 @@ export default class UtilityHandler {
                 notifyExperienced: '<@&1077221105498066974>',
                 notifyMaster: '<@&1077221066587512852>',
                 notifyGM: '<@&1077221033322500096>',
-                notify4s: '<@&1077228261131698316>'
+                notify4s: '<@&1077228261131698316>',
+                teacher: '<@&1043923757758156867>',
+                reaper: '<@&1043923757758156866>',
             }
         }
         return {
@@ -200,7 +208,9 @@ export default class UtilityHandler {
             notifyExperienced: '<@&1070733909119209512>',
             notifyMaster: '<@&1070734914716172390>',
             notifyGM: '<@&1070734957426786324>',
-            notify4s: '<@&1077226312277692466>'
+            notify4s: '<@&1077226312277692466>',
+            teacher: '<@&782012576279429174>',
+            reaper: '<@&922061359926104095>',
         }
     }
 
@@ -222,6 +232,10 @@ export default class UtilityHandler {
 
     public getKeyFromValue = (obj: any, value: string): any => {
         return Object.keys(obj).find(key => obj[key] === value)
+    }
+
+    public capitalizeFirstLetter = (str: string) => {
+        return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     public categorize = (role: string): string => {

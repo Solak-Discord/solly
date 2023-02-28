@@ -2,6 +2,8 @@ import { ActionRowBuilder, APIEmbedField, ButtonBuilder, ButtonInteraction, Butt
 import { Report } from '../entity/Report';
 import { Trial } from '../entity/Trial';
 import { TrialParticipation } from '../entity/TrialParticipation';
+import { Reaper } from '../entity/Reaper';
+import { ReaperParticipation } from '../entity/ReaperParticipation';
 import Bot from '../Bot';
 
 export default interface ButtonHandler { client: Bot; id: string; interaction: ButtonInteraction }
@@ -38,8 +40,11 @@ export default class ButtonHandler {
             case 'selectOutside': this.selectOutside(interaction); break;
             case 'selectElf': this.selectElf(interaction); break;
             case 'disbandTrial': this.disbandTrial(interaction); break;
+            case 'disbandReaper': this.disbandReaper(interaction); break;
             case 'startTrial': this.startTrial(interaction); break;
+            case 'startReaper': this.startReaper(interaction); break;
             case 'passTrialee': this.passTrialee(interaction); break;
+            case 'completeReaper': this.completeReaper(interaction); break;
             case 'failTrialee': this.failTrialee(interaction); break;
             case 'nextUpkeep': this.nextUpkeep(interaction); break;
             case 'prevUpkeep': this.prevUpkeep(interaction); break;
@@ -102,7 +107,7 @@ export default class ButtonHandler {
         await interaction.deferReply({ ephemeral: true });
         const { colours, hasRolePermissions, hasOverridePermissions } = this.client.util;
         const rolePermissions = await hasRolePermissions(this.client, ['admin', 'owner'], interaction);
-        const overridePermissions = await hasOverridePermissions(interaction, 'trials');
+        const overridePermissions = await hasOverridePermissions(interaction, 'assign');
 
         const messageEmbed: Embed = interaction.message.embeds[0];
         const messageContent: string | undefined = messageEmbed.data.description;
@@ -443,6 +448,54 @@ export default class ButtonHandler {
         if (sendMessage) await logChannel.send({ embeds: [logEmbed], components: [buttonRow] });
     }
 
+    public async sendReaperSquadMessage(interaction: ButtonInteraction<'cached'>, reaperId: string, fields: APIEmbedField[]): Promise<void> {
+        const { channels, colours, roles } = this.client.util;
+        const channel = await this.client.channels.fetch(channels.reaperSquad) as TextChannel;
+        let userString = '';
+        fields.forEach((member: APIEmbedField) => {
+            if (member.value !== '`Empty`' && !member.value.includes('Reaper')) {
+                userString += `${member.value} `;
+            }
+        })
+        const embed = new EmbedBuilder()
+            .setAuthor({ name: interaction.user.username, iconURL: interaction.user.avatarURL() || this.client.user?.avatarURL() || 'https://media.discordapp.net/attachments/1027186342620299315/1047598720834875422/618px-Solly_pet_1.png' })
+            .setTimestamp()
+            .setColor(colours.tan)
+            .setDescription(`
+            Congratulations to <@${reaperId}> on achieving their first solak kill!\n
+            ${roles.reaper} ${userString}
+            `);
+        await channel.send({ embeds: [embed] });
+    }
+
+    public async saveReaper(interaction: ButtonInteraction<'cached'>, reaperId: string, userId: string, fields: APIEmbedField[]): Promise<void> {
+        // Create new Reaper.
+        const { dataSource } = this.client;
+        const reaperRepository = dataSource.getRepository(Reaper);
+        const reaperObject = new Reaper();
+        reaperObject.recipient = reaperId;
+        reaperObject.host = userId;
+        reaperObject.link = interaction.message.url;
+        const reaper = await reaperRepository.save(reaperObject);
+
+        // Update Reaper Attendees
+
+        const reaperParticipants: ReaperParticipation[] = [];
+        fields.forEach((member: APIEmbedField) => {
+            if (member.value !== '`Empty`' && !member.value.includes('Reaper')) {
+                const participant = new ReaperParticipation();
+                participant.participant = member.value.slice(2, -1);
+                participant.reaper = reaper;
+                reaperParticipants.push(participant);
+            }
+        })
+
+        // Save reaper attendees
+
+        const participantReposittory = dataSource.getRepository(ReaperParticipation);
+        await participantReposittory.save(reaperParticipants);
+    }
+
     public async saveTrial(interaction: ButtonInteraction<'cached'>, trialeeId: string, roleId: string, userId: string, fields: APIEmbedField[]): Promise<void> {
         // Create new Trial.
         const { dataSource } = this.client;
@@ -537,10 +590,10 @@ export default class ButtonHandler {
         await this.handleRoleSelection(interaction, 'Elf');
     }
 
-    private async disbandTrial(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+    private async disbandEvent(interaction: ButtonInteraction<'cached'>, eventType: string, permissions: string[]): Promise<Message<true> | InteractionResponse<true> | void> {
         const { colours } = this.client.util;
         await interaction.deferReply({ ephemeral: true });
-        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
+        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, permissions, interaction);
         const messageEmbed: Embed = interaction.message.embeds[0];
         const messageContent: string | undefined = messageEmbed.data.description;
         const expression: RegExp = /\`Host:\` <@(\d+)>/;
@@ -562,26 +615,34 @@ export default class ButtonHandler {
                 const newMessageContent = messageContent?.replace('> **Team**', '');
                 const newEmbed = new EmbedBuilder()
                     .setColor(messageEmbed.color)
-                    .setDescription(`${newMessageContent}> Trial disbanded <t:${this.currentTime}:R>.`);
+                    .setDescription(`${newMessageContent}> ${this.client.util.capitalizeFirstLetter(eventType)} disbanded <t:${this.currentTime}:R>.`);
                 await interaction.message.edit({ content: '', embeds: [newEmbed], components: [] });
                 replyEmbed.setColor(colours.discord.green);
                 replyEmbed.setDescription(`Trial successfully disbanded!`);
                 return await interaction.editReply({ embeds: [replyEmbed] });
             } else {
                 replyEmbed.setColor(colours.discord.red)
-                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can disband this trial.`)
+                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can disband this ${eventType}.`)
                 return await interaction.editReply({ embeds: [replyEmbed] });
             }
         } else {
             this.client.logger.log(
                 {
-                    message: `Attempted restricted permissions. { command: Disband Trial, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    message: `Attempted restricted permissions. { command: Disband ${eventType}, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
                     handler: this.constructor.name,
                 },
                 true
             );
             return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
         }
+    }
+
+    private async disbandTrial(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await this.disbandEvent(interaction, 'trial', ['trialTeam', 'moderator', 'admin', 'owner']);
+    }
+
+    private async disbandReaper(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        await this.disbandEvent(interaction, 'reaper', ['reaper', 'moderator', 'admin', 'owner']);
     }
 
     private async startTrial(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
@@ -643,6 +704,142 @@ export default class ButtonHandler {
             this.client.logger.log(
                 {
                     message: `Attempted restricted permissions. { command: Start Trial, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async startReaper(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        const { colours } = this.client.util; // Add isTeamFull if team full is required again.
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['reaper'], interaction);
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const fields: APIEmbedField[] = messageEmbed.fields;
+        const expression: RegExp = /\`Host:\` <@(\d+)>/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let userId: string = '';
+        if (messageContent) {
+            const matches = messageContent.match(expression);
+            userId = matches ? matches[1] : '';
+            if (!userId) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Host could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (hasRolePermissions) {
+            const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+            if ((interaction.user.id === userId) || hasElevatedRole) {
+                // if (isTeamFull(fields)) {
+                const trialStarted = `> **Moderation**\n\n ⬥ Reaper started <t:${this.currentTime}:R>.\n\n> **Team**`;
+                const newMessageContent = messageContent?.replace('> **Team**', trialStarted);
+                const newEmbed = new EmbedBuilder()
+                    .setColor(messageEmbed.color)
+                    .setFields(fields)
+                    .setDescription(`${newMessageContent}`);
+                const controlPanel = new ActionRowBuilder<ButtonBuilder>()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('completeReaper')
+                            .setLabel('Finish')
+                            .setStyle(ButtonStyle.Success),
+                        new ButtonBuilder()
+                            .setCustomId('disbandReaper')
+                            .setLabel('Disband')
+                            .setStyle(ButtonStyle.Danger)
+                    );
+                await interaction.message.edit({ content: '', embeds: [newEmbed], components: [controlPanel] });
+                replyEmbed.setColor(colours.discord.green);
+                replyEmbed.setDescription(`Reaper successfully started!`);
+                return await interaction.editReply({ embeds: [replyEmbed] });
+                // } else {
+                //     replyEmbed.setColor(colours.discord.red)
+                //     replyEmbed.setDescription(`The team is not full yet.`)
+                //     return await interaction.editReply({ embeds: [replyEmbed] });
+                // }
+            } else {
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can start this reaper.`)
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Start Reaper, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
+                    handler: this.constructor.name,
+                },
+                true
+            );
+            return await interaction.editReply({ content: 'You do not have permissions to run this command. This incident has been logged.' });
+        }
+    }
+
+    private async completeReaper(interaction: ButtonInteraction<'cached'>): Promise<Message<true> | InteractionResponse<true> | void> {
+        const { colours } = this.client.util;
+        await interaction.deferReply({ ephemeral: true });
+        const hasRolePermissions: boolean | undefined = await this.client.util.hasRolePermissions(this.client, ['reaper'], interaction);
+        const messageEmbed: Embed = interaction.message.embeds[0];
+        const messageContent: string | undefined = messageEmbed.data.description;
+        const fields: APIEmbedField[] = messageEmbed.fields;
+        const hostExpression: RegExp = /\`Host:\` <@(\d+)>/;
+        const trialeeExpression: RegExp = /\`Discord:\` <@(\d+)>/;
+        const replyEmbed: EmbedBuilder = new EmbedBuilder();
+        let userId: string = '';
+        let reaperId: string = '';
+        if (messageContent) {
+            const hostMatches = messageContent.match(hostExpression);
+            const trialeeMatches = messageContent.match(trialeeExpression);
+            userId = hostMatches ? hostMatches[1] : '';
+            reaperId = trialeeMatches ? trialeeMatches[1] : '';
+            if (!userId || !reaperId) {
+                // Should never really make it to this.
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription('Host or Reaper ID could not be detected.')
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        }
+        if (hasRolePermissions) {
+            const hasElevatedRole = await this.client.util.hasRolePermissions(this.client, ['moderator', 'admin', 'owner'], interaction);
+            if ((interaction.user.id === userId) || hasElevatedRole) {
+                const splitResults = messageContent?.split('⬥');
+                if (!splitResults) {
+                    replyEmbed.setColor(colours.discord.red)
+                    replyEmbed.setDescription(`Message could not be parsed correctly.`)
+                    return await interaction.editReply({ embeds: [replyEmbed] });
+                }
+                const messageContentWithoutStarted = splitResults[0];
+                const dirtyStarted = splitResults[1];
+                const started = dirtyStarted?.replace('> **Team**', '').trim();
+                const newMessageContent = `${messageContentWithoutStarted}⬥ ${started}\n⬥ <@${reaperId}> got their kill <t:${this.currentTime}:R>!\n\n> **Team**`;
+
+                // Gotta post this to reaper squad
+                await this.sendReaperSquadMessage(interaction, reaperId, fields);
+
+                // Gotta save this to reaper database
+                await this.saveReaper(interaction, reaperId, userId, fields);
+
+                const newEmbed = new EmbedBuilder()
+                    .setColor(colours.discord.green)
+                    .setFields(fields)
+                    .setDescription(`${newMessageContent}`);
+                await interaction.message.edit({ content: '', embeds: [newEmbed], components: [] });
+                replyEmbed.setColor(colours.discord.green);
+                replyEmbed.setDescription(`Reaper successfully completed!`);
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            } else {
+                replyEmbed.setColor(colours.discord.red)
+                replyEmbed.setDescription(`Only <@${userId}> or an elevated role can complete this reaper.`)
+                return await interaction.editReply({ embeds: [replyEmbed] });
+            }
+        } else {
+            this.client.logger.log(
+                {
+                    message: `Attempted restricted permissions. { command: Complete Reaper, user: ${interaction.user.username}, channel: ${interaction.channel} }`,
                     handler: this.constructor.name,
                 },
                 true
