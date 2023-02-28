@@ -25,6 +25,7 @@ export default class TrialLeaderboard extends BotInteraction {
         let field = '';
         if (array.length === 0) return 'None';
         const filteredArray = array.filter(item => !item.user.includes("Placeholder"));
+        if (filteredArray.length === 0) return 'None';
         filteredArray.forEach((item, index) => {
             let prefix: string;
             switch (index) {
