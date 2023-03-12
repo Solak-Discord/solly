@@ -531,7 +531,7 @@ export default class ButtonHandler {
         const { colours, checkForUserId, getEmptyObject } = this.client.util;
 
         await interaction.deferReply({ ephemeral: true });
-        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['trialTeam'], interaction);
+        const hasRolePermissions = await this.client.util.hasRolePermissions(this.client, ['reaper', 'trialTeam'], interaction);
         if (hasRolePermissions) {
             const messageEmbed = interaction.message.embeds[0];
             const messageContent = messageEmbed.data.description;
