@@ -65,18 +65,40 @@ export default class GivePoints extends BotInteraction {
                 placeholder.role = 'Placeholder';
                 existingPlaceholder = await repository.save(placeholder);
             }
-            const newData: any = [...Array(quantity)].map((element) => ({ participant: user.id, role: 'Placeholder', trial: existingPlaceholder }));
-            await dataSource
-                .createQueryBuilder()
-                .insert()
-                .into(TrialParticipation)
-                .values(newData)
-                .execute()
+            if (quantity > 0) {
+                const newData: any = [...Array(quantity)].map((element) => ({ participant: user.id, role: 'Placeholder', trial: existingPlaceholder }));
+                await dataSource
+                    .createQueryBuilder()
+                    .insert()
+                    .into(TrialParticipation)
+                    .values(newData)
+                    .execute()
+            }
+            else if (quantity < 0) {
+                const participationRepo = dataSource.getRepository(TrialParticipation);
+
+                for(let i = 0; i < Math.abs(quantity); i++){
+                    let participationToDelete = await participationRepo.findOne({
+                        where: {
+                            participant: user.id,
+                        }
+                    })
+                    if (participationToDelete) {
+                        console.log('Placeholder entry found.' + i);
+                        // Delete the entry if it exists
+                        await participationRepo.remove(participationToDelete);
+                    
+                        console.log('Entry deleted successfully.' + i);
+                    } else {
+                        console.log('Entry not found.' + i);
+                    }
+                }
+            }
         }
 
         if (team === 'reaper') {
-            const repository = dataSource.getRepository(Reaper);
-            let existingPlaceholder = await repository.findOne({
+            const reaperRepo = dataSource.getRepository(Reaper);
+            let existingPlaceholder = await reaperRepo.findOne({
                 where: {
                     host: 'Placeholder'
                 }
@@ -86,15 +108,38 @@ export default class GivePoints extends BotInteraction {
                 placeholder.host = 'Placeholder';
                 placeholder.link = 'Placeholder';
                 placeholder.recipient = 'Placeholder';
-                existingPlaceholder = await repository.save(placeholder);
+                existingPlaceholder = await reaperRepo.save(placeholder);
             }
-            const newData: any = [...Array(quantity)].map((element) => ({ participant: user.id, reaper: existingPlaceholder }));
-            await dataSource
-                .createQueryBuilder()
-                .insert()
-                .into(ReaperParticipation)
-                .values(newData)
-                .execute()
+            if (quantity > 0) {
+                const newData: any = [...Array(quantity)].map((element) => ({ participant: user.id, reaper: existingPlaceholder }));
+                await dataSource
+                    .createQueryBuilder()
+                    .insert()
+                    .into(ReaperParticipation)
+                    .values(newData)
+                    .execute()
+            }
+            else if (quantity < 0){
+                const participationRepo = dataSource.getRepository(ReaperParticipation);
+
+                for(let i = 0; i < Math.abs(quantity); i++){
+                    let participationToDelete = await participationRepo.findOne({
+                        where: {
+                            participant: user.id,
+                            // reaper: existingPlaceholder
+                        }
+                    })
+                    if (participationToDelete) {
+                        console.log('Placeholder entry found.' + i);
+                        // Delete the entry if it exists
+                        await participationRepo.remove(participationToDelete);
+                    
+                        console.log('Entry deleted successfully.' + i);
+                    } else {
+                        console.log('Entry not found.' + i);
+                    }
+                }
+            }
         }
 
         const replyEmbed = new EmbedBuilder()
