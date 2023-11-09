@@ -74,24 +74,23 @@ export default class GivePoints extends BotInteraction {
                     .values(newData)
                     .execute()
             }
-            else if (quantity < 0) {
+            else if (quantity < 0){
                 const participationRepo = dataSource.getRepository(TrialParticipation);
-
-                for(let i = 0; i < Math.abs(quantity); i++){
-                    let participationToDelete = await participationRepo.findOne({
-                        where: {
-                            participant: user.id,
-                        }
-                    })
-                    if (participationToDelete) {
-                        console.log('Placeholder entry found.' + i);
-                        // Delete the entry if it exists
-                        await participationRepo.remove(participationToDelete);
-                    
-                        console.log('Entry deleted successfully.' + i);
-                    } else {
-                        console.log('Entry not found.' + i);
+                let participationToDelete = await participationRepo.find({
+                    where: {
+                        participant: user.id,
+                        // reaper: existingPlaceholder
                     }
+                })
+                if (participationToDelete) {
+                    console.log('Placeholder entry found.');
+                    await participationRepo.remove(participationToDelete.slice(0, quantity-1));
+                    console.log('Entry deleted successfully.');
+                    
+                } 
+                else {
+                    console.log('Entry not found.');
+                
                 }
             }
         }
@@ -121,23 +120,21 @@ export default class GivePoints extends BotInteraction {
             }
             else if (quantity < 0){
                 const participationRepo = dataSource.getRepository(ReaperParticipation);
-
-                for(let i = 0; i < Math.abs(quantity); i++){
-                    let participationToDelete = await participationRepo.findOne({
-                        where: {
-                            participant: user.id,
-                            // reaper: existingPlaceholder
-                        }
-                    })
-                    if (participationToDelete) {
-                        console.log('Placeholder entry found.' + i);
-                        // Delete the entry if it exists
-                        await participationRepo.remove(participationToDelete);
-                    
-                        console.log('Entry deleted successfully.' + i);
-                    } else {
-                        console.log('Entry not found.' + i);
+                let participationToDelete = await participationRepo.find({
+                    where: {
+                        participant: user.id,
+                        // reaper: existingPlaceholder
                     }
+                })
+                if (participationToDelete) {
+                    console.log('Placeholder entry found.');
+                    await participationRepo.remove(participationToDelete.slice(0, quantity-1));
+                    console.log('Entry deleted successfully.');
+                    
+                } 
+                else {
+                    console.log('Entry not found.');
+                
                 }
             }
         }
