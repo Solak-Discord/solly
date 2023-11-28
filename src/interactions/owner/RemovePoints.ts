@@ -69,19 +69,12 @@ export default class RemovePoints extends BotInteraction {
             let participationToDelete = await participationRepo.find({
                 where: {
                     participant: user.id,
-                    // reaper: existingPlaceholder
                 },
                 take: quantity,
             });
             if (participationToDelete) {
-                console.log('Placeholder entry found.');
                 await participationRepo.remove(participationToDelete);
-                console.log('Entry deleted successfully.');
-                
             } 
-            else {
-                console.log('Entry not found.');
-            }
         }
 
         if (team === 'reaper') {
@@ -102,18 +95,12 @@ export default class RemovePoints extends BotInteraction {
             let participationToDelete = await participationRepo.find({
                 where: {
                     participant: user.id,
-                    // reaper: existingPlaceholder
                 },
                 take: quantity,
             });
             if (participationToDelete) {
-                console.log('Placeholder entry found.');
                 await participationRepo.remove(participationToDelete);
-                console.log('Entry deleted successfully.');
                 
-            } 
-            else {
-                console.log('Entry not found.');
             }
         }
 
