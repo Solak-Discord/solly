@@ -70,11 +70,12 @@ export default class RemovePoints extends BotInteraction {
                 where: {
                     participant: user.id,
                     // reaper: existingPlaceholder
-                }
-            })
+                },
+                take: quantity,
+            });
             if (participationToDelete) {
                 console.log('Placeholder entry found.');
-                await participationRepo.remove(participationToDelete.slice(0, quantity));
+                await participationRepo.remove(participationToDelete);
                 console.log('Entry deleted successfully.');
                 
             } 
@@ -102,11 +103,12 @@ export default class RemovePoints extends BotInteraction {
                 where: {
                     participant: user.id,
                     // reaper: existingPlaceholder
-                }
-            })
+                },
+                take: quantity,
+            });
             if (participationToDelete) {
                 console.log('Placeholder entry found.');
-                await participationRepo.remove(participationToDelete.slice(0, quantity));
+                await participationRepo.remove(participationToDelete);
                 console.log('Entry deleted successfully.');
                 
             } 
