@@ -5,13 +5,13 @@ import { Trial } from '../../entity/Trial';
 import { Reaper } from '../../entity/Reaper';
 import { ReaperParticipation } from '../../entity/ReaperParticipation';
 
-export default class GivePoints extends BotInteraction {
+export default class RemovePoints extends BotInteraction {
     get name() {
-        return 'give-points';
+        return 'remove-points';
     }
 
     get description() {
-        return 'Gives leaderboard points for a team (i.e. trial participation)';
+        return 'Removes leaderboard points for a team (i.e. trial participation)';
     }
 
     get permissions() {
@@ -65,13 +65,16 @@ export default class GivePoints extends BotInteraction {
                 placeholder.role = 'Placeholder';
                 existingPlaceholder = await repository.save(placeholder);
             }
-            const newData: any = [...Array(quantity)].map((element) => ({ participant: user.id, role: 'Placeholder', trial: existingPlaceholder }));
-            await dataSource
-                .createQueryBuilder()
-                .insert()
-                .into(TrialParticipation)
-                .values(newData)
-                .execute()
+            const participationRepo = dataSource.getRepository(TrialParticipation);
+            let participationToDelete = await participationRepo.find({
+                where: {
+                    participant: user.id,
+                },
+                take: quantity,
+            });
+            if (participationToDelete) {
+                await participationRepo.remove(participationToDelete);
+            } 
         }
 
         if (team === 'reaper') {
@@ -88,13 +91,17 @@ export default class GivePoints extends BotInteraction {
                 placeholder.recipient = 'Placeholder';
                 existingPlaceholder = await reaperRepo.save(placeholder);
             }
-            const newData: any = [...Array(quantity)].map((element) => ({ participant: user.id, reaper: existingPlaceholder }));
-            await dataSource
-                .createQueryBuilder()
-                .insert()
-                .into(ReaperParticipation)
-                .values(newData)
-                .execute()
+            const participationRepo = dataSource.getRepository(ReaperParticipation);
+            let participationToDelete = await participationRepo.find({
+                where: {
+                    participant: user.id,
+                },
+                take: quantity,
+            });
+            if (participationToDelete) {
+                await participationRepo.remove(participationToDelete);
+                
+            }
         }
 
         const replyEmbed = new EmbedBuilder()
