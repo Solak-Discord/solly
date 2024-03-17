@@ -104,10 +104,10 @@ export default class UtilityHandler {
 
     get dpm() {
         return {
-            'initiate': 270,
-            'adept': 330,
-            'mastery': 410,
-            'extreme': 475
+            'initiate': 300,
+            'adept': 400,
+            'mastery': 475,
+            'extreme': 590
         }
     }
 
