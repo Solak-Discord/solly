@@ -270,7 +270,6 @@ export default class Pass extends BotInteraction {
         const groupFields = [
             { name: 'Base', value: checkRole('Base', info), inline: true },
             { name: 'Outside', value: checkRole('Outside', info), inline: true },
-            { name: 'Outside', value: '`Empty`', inline: true },
             { name: 'Elf', value: checkRole('Elf', info), inline: true },
             { name: 'Elf', value: '`Empty`', inline: true },
         ]
